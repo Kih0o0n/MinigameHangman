@@ -1,4 +1,4 @@
-// Balloon Hangman word library
+// DDingbo Balloon Hangman word library
 // 기준: 미국 영어, 5~9글자, 쉬운 일상 단어, 힌트 없음.
 // word는 반드시 A-Z 대문자만 사용합니다.
 
