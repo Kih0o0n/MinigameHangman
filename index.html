@@ -1,1753 +1,211 @@
 <!doctype html>
 <html lang="ko">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#9edffc">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>풍선 행맨</title>
-  <style>
-    @import url("https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=Jua&display=swap");
-
-    :root {
-      --paper: #fff8df;
-      --paper-deep: #ffeaa4;
-      --sky: #bdeeff;
-      --sky-deep: #88d9ff;
-      --ink: #29201a;
-      --soft-ink: #5b4a40;
-      --green: #a8ec9b;
-      --green-deep: #52bb58;
-      --red: #ffb3a6;
-      --red-deep: #e86b5a;
-      --cream: #fffdf1;
-      --shadow: rgba(51, 35, 18, 0.16);
-      --version: "v0.1.6";
-    }
-
-    * { box-sizing: border-box; }
-
-    html, body {
-      width: 100%;
-      min-height: 100%;
-      margin: 0;
-      overflow: hidden;
-      background: #9fe3ff;
-      color: var(--ink);
-      font-family: ui-rounded, "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-      -webkit-tap-highlight-color: transparent;
-      user-select: none;
-      touch-action: manipulation;
-    }
-
-    body::before {
-      content: "";
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      background:
-        radial-gradient(circle at 12% 18%, rgba(255,255,255,0.55) 0 1.4px, transparent 1.8px),
-        radial-gradient(circle at 80% 12%, rgba(255,255,255,0.36) 0 1.2px, transparent 1.7px),
-        radial-gradient(circle at 42% 70%, rgba(54,38,26,0.07) 0 0.7px, transparent 1.2px),
-        repeating-linear-gradient(107deg, rgba(255,255,255,0.18) 0 1px, transparent 1px 5px),
-        repeating-linear-gradient(22deg, rgba(72,51,31,0.055) 0 1px, transparent 1px 7px);
-      opacity: 0.86;
-      mix-blend-mode: multiply;
-    }
-
-    body::after {
-      content: "";
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      background:
-        repeating-linear-gradient(0deg, rgba(255,255,255,0.08) 0 1px, transparent 1px 4px),
-        repeating-linear-gradient(90deg, rgba(66,44,28,0.025) 0 1px, transparent 1px 6px);
-      opacity: 0.55;
-      mix-blend-mode: overlay;
-    }
-
-    button, a.buttonLike {
-      font: inherit;
-      color: inherit;
-      border: 0;
-      text-decoration: none;
-      cursor: pointer;
-    }
-
-    .app {
-      position: relative;
-      width: 100%;
-      max-width: 520px;
-      height: 100dvh;
-      min-height: 560px;
-      margin: 0 auto;
-      overflow: hidden;
-      background:
-        repeating-linear-gradient(116deg, rgba(255,255,255,0.12) 0 2px, transparent 2px 8px),
-        repeating-linear-gradient(24deg, rgba(35,99,124,0.035) 0 1px, transparent 1px 7px),
-        linear-gradient(180deg, rgba(255,255,255,0.34), rgba(255,255,255,0.05)),
-        var(--sky);
-      box-shadow: 0 0 0 3px rgba(255,255,255,0.24) inset;
-    }
-
-    .screen {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      flex-direction: column;
-      opacity: 1;
-      transform: translateY(0);
-      transition: opacity 160ms ease, transform 160ms ease;
-    }
-
-    .hidden {
-      display: none !important;
-    }
-
-    .doodlePanel {
-      position: relative;
-      border: 4px solid var(--ink);
-      border-radius: 30px 24px 34px 26px;
-      background:
-        linear-gradient(135deg, rgba(255,255,255,0.40), rgba(255,255,255,0)),
-        radial-gradient(circle at 20% 10%, rgba(255,255,255,0.70) 0 10%, transparent 11%),
-        var(--paper);
-      box-shadow: 8px 10px 0 rgba(41,32,26,0.14);
-    }
-
-    .doodlePanel::before,
-    .doodleButton::before,
-    .key::before,
-    .resultCard::before,
-    .backButton::before,
-    .soundToggle::before {
-      content: "";
-      position: absolute;
-      inset: -4px;
-      border: 2px solid rgba(41,32,26,0.38);
-      border-radius: inherit;
-      pointer-events: none;
-      transform: translate(2px, -1px) rotate(-0.7deg);
-      opacity: 0.78;
-    }
-
-    .doodlePanel::after,
-    .doodleButton::after,
-    .key::after,
-    .resultCard::after,
-    .backButton::after,
-    .soundToggle::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      border-radius: inherit;
-      pointer-events: none;
-      background:
-        repeating-linear-gradient(145deg, rgba(255,255,255,0.20) 0 1px, transparent 1px 5px),
-        repeating-linear-gradient(20deg, rgba(54,38,26,0.075) 0 1px, transparent 1px 6px),
-        radial-gradient(circle at 28% 32%, rgba(255,255,255,0.18) 0 1px, transparent 1.4px);
-      mix-blend-mode: multiply;
-      opacity: 0.82;
-    }
-
-    /* Start screen */
-    .startScreen {
-      justify-content: center;
-      align-items: center;
-      padding: max(18px, env(safe-area-inset-top)) 22px max(20px, env(safe-area-inset-bottom));
-      gap: 16px;
-    }
-
-    .cloud {
-      position: absolute;
-      pointer-events: none;
-      width: 120px;
-      height: 44px;
-      border: 4px solid rgba(41,32,26,0.42);
-      border-radius: 999px;
-      background: rgba(255,255,255,0.58);
-      filter: drop-shadow(3px 5px 0 rgba(255,255,255,0.22));
-    }
-    .cloud::before,
-    .cloud::after {
-      content: "";
-      position: absolute;
-      background: inherit;
-      border: inherit;
-      border-bottom: 0;
-      border-radius: 999px 999px 0 0;
-    }
-    .cloud::before { width: 54px; height: 42px; left: 18px; top: -26px; }
-    .cloud::after { width: 44px; height: 34px; right: 20px; top: -20px; }
-    .cloudOne { top: 60px; left: -44px; transform: rotate(-4deg) scale(0.92); }
-    .cloudTwo { top: 128px; right: -44px; transform: rotate(5deg) scale(0.82); }
-    .cloudThree { bottom: 154px; left: -58px; transform: rotate(3deg) scale(0.72); opacity: 0.7; }
-
-    .startCard {
-      width: min(100%, 430px);
-      padding: 24px 20px 22px;
-      text-align: center;
-      z-index: 1;
-    }
-
-    .gameTitle {
-      margin: 0;
-      font-size: clamp(2.1rem, 10vw, 3.15rem);
-      line-height: 1.02;
-      letter-spacing: -0.06em;
-      text-shadow: 3px 3px 0 #ffffff, 5px 5px 0 rgba(41,32,26,0.14);
-    }
-
-    .subTitle {
-      margin: 8px 0 12px;
-      font-size: 1rem;
-      font-weight: 900;
-      color: #32687a;
-      letter-spacing: 0.03em;
-    }
-
-    .startDescription {
-      margin: 6px 0 16px;
-      color: var(--soft-ink);
-      font-size: 1.02rem;
-      line-height: 1.48;
-      font-weight: 750;
-    }
-
-    .startMascot {
-      height: 190px;
-      margin: 2px auto 12px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      transform: scale(0.92);
-    }
-
-    .startActions {
-      display: grid;
-      gap: 10px;
-      width: min(100%, 300px);
-      margin: 0 auto;
-    }
-
-    .doodleButton {
-      position: relative;
-      min-height: 52px;
-      padding: 12px 18px;
-      border: 4px solid var(--ink);
-      border-radius: 18px 22px 17px 24px;
-      background: #fffaf0;
-      box-shadow: 5px 7px 0 rgba(41,32,26,0.16);
-      font-size: 1.05rem;
-      font-weight: 1000;
-      transition: transform 100ms ease, box-shadow 100ms ease, filter 120ms ease;
-    }
-
-    .doodleButton.primary {
-      background:
-        linear-gradient(145deg, rgba(255,255,255,0.40), transparent),
-        #ffd65f;
-      font-size: 1.25rem;
-      letter-spacing: 0.06em;
-    }
-
-    .doodleButton.secondary { background: #dff8ff; }
-    .doodleButton.ghost { background: #fff5c9; }
-    .doodleButton:active {
-      transform: translate(3px, 4px) rotate(-1deg);
-      box-shadow: 2px 3px 0 rgba(41,32,26,0.16);
-    }
-
-    .doodlePanel,
-    .doodleButton,
-    .key,
-    .resultCard {
-      filter: url(#roughPencilEdge);
-    }
-
-    .doodleButton,
-    .key,
-    .backButton,
-    .soundToggle {
-      overflow: visible;
-    }
-
-    .soundToggle {
-      position: absolute;
-      top: max(12px, env(safe-area-inset-top));
-      right: 14px;
-      z-index: 3;
-      min-height: 36px;
-      padding: 7px 12px;
-      border: 3px solid var(--ink);
-      border-radius: 999px;
-      background: rgba(255, 253, 241, 0.86);
-      box-shadow: 3px 4px 0 rgba(41,32,26,0.14);
-      filter: url(#roughPencilEdge);
-      font-weight: 1000;
-      font-size: 0.84rem;
-    }
-
-    .versionText {
-      position: absolute;
-      right: 12px;
-      bottom: max(8px, env(safe-area-inset-bottom));
-      font-size: 0.72rem;
-      font-weight: 900;
-      color: rgba(41,32,26,0.52);
-      z-index: 5;
-    }
-
-    /* Play screen */
-    .playScreen {
-      background:
-        repeating-linear-gradient(117deg, rgba(255,255,255,0.14) 0 2px, transparent 2px 8px),
-        repeating-linear-gradient(25deg, rgba(35,99,124,0.04) 0 1px, transparent 1px 7px),
-        linear-gradient(180deg, rgba(255,255,255,0.24), rgba(255,255,255,0.03)),
-        var(--sky);
-    }
-
-    .topBar {
-      height: calc(48px + env(safe-area-inset-top));
-      padding: env(safe-area-inset-top) 12px 0;
-      display: grid;
-      grid-template-columns: 42px 1fr 58px;
-      align-items: center;
-      gap: 6px;
-      flex: 0 0 auto;
-      z-index: 5;
-    }
-
-    .backButton {
-      position: relative;
-      width: 38px;
-      height: 38px;
-      border: 3px solid var(--ink);
-      border-radius: 14px 12px 16px 12px;
-      background: var(--cream);
-      box-shadow: 3px 4px 0 rgba(41,32,26,0.14);
-      filter: url(#roughPencilEdge);
-      font-size: 1.7rem;
-      line-height: 1;
-      font-weight: 1000;
-    }
-
-    .topTitle {
-      text-align: center;
-      font-weight: 1000;
-      letter-spacing: -0.04em;
-      text-shadow: 2px 2px 0 rgba(255,255,255,0.70);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .balloonCount {
-      justify-self: end;
-      padding: 5px 9px;
-      border: 3px solid rgba(41,32,26,0.78);
-      border-radius: 999px;
-      background: rgba(255,253,241,0.75);
-      font-size: 0.86rem;
-      font-weight: 1000;
-    }
-
-    .playMain {
-      flex: 1 1 auto;
-      min-height: 0;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .skyArea {
-      position: relative;
-      flex: 1 1 auto;
-      min-height: 210px;
-      margin: 0 10px;
-      overflow: hidden;
-      border-radius: 28px;
-    }
-
-    .skyArea::before {
-      content: "";
-      position: absolute;
-      inset: 8px 0 auto;
-      height: 80%;
-      background:
-        radial-gradient(ellipse at 18% 68%, rgba(255,255,255,0.42) 0 5%, transparent 6%),
-        radial-gradient(ellipse at 82% 42%, rgba(255,255,255,0.34) 0 5%, transparent 6%);
-      opacity: 0.85;
-    }
-
-    .balloonCluster {
-      position: absolute;
-      top: 6px;
-      left: 50%;
-      width: 240px;
-      height: 112px;
-      transform: translateX(-50%);
-      z-index: 2;
-    }
-
-    .balloon {
-      position: absolute;
-      width: 54px;
-      height: 66px;
-      border: 4px solid var(--ink);
-      border-radius: 52% 46% 50% 48% / 56% 58% 42% 42%;
-      background-image:
-        repeating-linear-gradient(110deg, rgba(255,255,255,0.22) 0 2px, transparent 2px 7px),
-        repeating-linear-gradient(20deg, rgba(41,32,26,0.08) 0 1px, transparent 1px 5px);
-      background-blend-mode: screen, multiply;
-      box-shadow: inset -7px -8px 0 rgba(41,32,26,0.08), 3px 5px 0 rgba(41,32,26,0.12), 1px -1px 0 rgba(41,32,26,0.22);
-      transform-origin: 50% 100%;
-      animation: balloonBob 2.7s ease-in-out infinite;
-      filter: url(#roughPencilEdge);
-    }
-    .balloon::before {
-      content: "";
-      position: absolute;
-      top: 9px;
-      left: 12px;
-      width: 14px;
-      height: 18px;
-      border-radius: 50%;
-      background: rgba(255,255,255,0.42);
-      transform: rotate(18deg);
-    }
-    .balloon::after {
-      content: "";
-      position: absolute;
-      left: 50%;
-      bottom: -13px;
-      width: 15px;
-      height: 14px;
-      transform: translateX(-50%) rotate(45deg);
-      border: 3px solid var(--ink);
-      border-left: 0;
-      border-top: 0;
-      background: inherit;
-    }
-    .balloon .popWord {
-      display: none;
-      position: absolute;
-      left: 50%;
-      top: 42%;
-      transform: translate(-50%, -50%) rotate(-10deg);
-      color: var(--ink);
-      font-size: 0.8rem;
-      font-weight: 1000;
-      text-shadow: 1px 1px 0 white;
-    }
-    .balloon.popped {
-      animation: popBalloon 330ms ease-out forwards;
-    }
-    .balloon.popped .popWord { display: block; }
-    .balloon:nth-child(1) { left: 28px; top: 30px; background-color: #ff9fba; transform: rotate(-11deg); animation-delay: -0.3s; }
-    .balloon:nth-child(2) { left: 68px; top: 0; background-color: #ffe06d; transform: rotate(5deg); animation-delay: -1.2s; }
-    .balloon:nth-child(3) { left: 110px; top: 26px; background-color: #9fe7ff; transform: rotate(-4deg); animation-delay: -0.8s; }
-    .balloon:nth-child(4) { left: 150px; top: 4px; background-color: #aef19b; transform: rotate(9deg); animation-delay: -1.7s; }
-    .balloon:nth-child(5) { left: 184px; top: 36px; background-color: #d2b2ff; transform: rotate(13deg); animation-delay: -0.6s; }
-    .balloon:nth-child(6) { left: 8px; top: 4px; background-color: #ffbf75; transform: rotate(-7deg); animation-delay: -1.4s; }
-
-    .stringBundle {
-      position: absolute;
-      left: 50%;
-      top: 82px;
-      width: 156px;
-      height: 100px;
-      transform: translateX(-50%);
-      z-index: 1;
-      pointer-events: none;
-    }
-    .stringBundle span {
-      position: absolute;
-      top: 0;
-      left: 50%;
-      width: 3px;
-      height: 98px;
-      border-radius: 999px;
-      background: rgba(41,32,26,0.72);
-      transform-origin: top center;
-    }
-    .stringBundle span:nth-child(1) { transform: translateX(-50%) rotate(-31deg); }
-    .stringBundle span:nth-child(2) { transform: translateX(-50%) rotate(-18deg); }
-    .stringBundle span:nth-child(3) { transform: translateX(-50%) rotate(-6deg); }
-    .stringBundle span:nth-child(4) { transform: translateX(-50%) rotate(8deg); }
-    .stringBundle span:nth-child(5) { transform: translateX(-50%) rotate(20deg); }
-    .stringBundle span:nth-child(6) { transform: translateX(-50%) rotate(32deg); }
-
-    .characterActor {
-      position: absolute;
-      left: 50%;
-      top: 92px;
-      width: min(230px, 58vw);
-      height: min(245px, 58vw);
-      transform: translateX(-50%);
-      transform-origin: 50% 10%;
-      z-index: 3;
-      animation: actorFloat 3s ease-in-out infinite;
-      will-change: transform;
-    }
-    .characterActor svg { width: 100%; height: 100%; overflow: visible; }
-    .startMascot.characterActor {
-      position: relative;
-      left: auto;
-      top: auto;
-      width: 190px;
-      height: 190px;
-      transform: none;
-      margin-left: auto;
-      margin-right: auto;
-    }
-    .characterActor.mood-correct { animation: actorCorrect 500ms ease-out; }
-    .characterActor.mood-wrong { animation: actorWrong 430ms ease-in-out; }
-    .characterActor.mood-clear { animation: actorClear 780ms ease-in-out infinite alternate; }
-    .characterActor.mood-falling { animation: actorFall 820ms cubic-bezier(.18,.83,.6,1) forwards; }
-
-    .characterActor.mood-falling ~ .stringBundle,
-    .skyArea.falling .stringBundle { opacity: 0; }
-
-    .wordPanel {
-      flex: 0 0 auto;
-      padding: 4px 12px 8px;
-      text-align: center;
-      z-index: 6;
-    }
-
-    .wordSlots {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: clamp(4px, 1.3vw, 8px);
-      min-height: 54px;
-      padding: 4px 6px;
-    }
-
-    .slot {
-      width: clamp(30px, 8.4vw, 42px);
-      height: 48px;
-      display: grid;
-      place-items: center;
-      border-bottom: 5px solid var(--ink);
-      font-size: clamp(1.35rem, 7vw, 2rem);
-      font-weight: 1000;
-      line-height: 1;
-      text-shadow: 2px 2px 0 rgba(255,255,255,0.8);
-    }
-
-    .messageBox {
-      min-height: 26px;
-      font-size: 0.95rem;
-      font-weight: 950;
-      color: #315f70;
-      letter-spacing: -0.02em;
-    }
-
-    .keyboard {
-      flex: 0 0 auto;
-      padding: 6px 10px max(10px, env(safe-area-inset-bottom));
-      display: grid;
-      gap: 7px;
-      z-index: 7;
-    }
-    .keyboardRow {
-      display: grid;
-      gap: 7px;
-      justify-content: center;
-    }
-    .keyboardRow.row7 { grid-template-columns: repeat(7, minmax(0, 1fr)); }
-    .keyboardRow.row5 { grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 0 12%; }
-
-    .key {
-      position: relative;
-      min-height: 42px;
-      border: 3px solid var(--ink);
-      border-radius: 14px 12px 16px 13px;
-      background: #fffdf3;
-      box-shadow: 3px 4px 0 rgba(41,32,26,0.13);
-      font-size: 1.12rem;
-      font-weight: 1000;
-      transition: transform 80ms ease, box-shadow 80ms ease, filter 120ms ease, opacity 120ms ease;
-    }
-    .key:active:not(:disabled) {
-      transform: translate(2px, 3px) rotate(-1deg);
-      box-shadow: 1px 2px 0 rgba(41,32,26,0.13);
-    }
-    .key.correct {
-      background: linear-gradient(145deg, rgba(255,255,255,0.38), transparent), var(--green);
-      border-color: #23592a;
-      color: #163c1c;
-      filter: saturate(1.05);
-    }
-    .key.wrong {
-      background: linear-gradient(145deg, rgba(255,255,255,0.34), transparent), var(--red);
-      border-color: #6e2a22;
-      color: #5b211b;
-    }
-    .key:disabled {
-      cursor: default;
-      opacity: 0.88;
-    }
-
-    /* Result overlay */
-    .resultOverlay {
-      position: absolute;
-      inset: 0;
-      z-index: 20;
-      display: grid;
-      place-items: center;
-      padding: 18px;
-      background: rgba(35, 68, 83, 0.24);
-      backdrop-filter: blur(2px);
-    }
-
-    .resultCard {
-      position: relative;
-      width: min(100%, 390px);
-      padding: 24px 20px 20px;
-      text-align: center;
-      border: 4px solid var(--ink);
-      border-radius: 28px 22px 32px 24px;
-      background: var(--paper);
-      box-shadow: 8px 10px 0 rgba(41,32,26,0.18);
-      animation: resultPop 280ms cubic-bezier(.18,.95,.35,1.22);
-    }
-
-    .resultTitle {
-      margin: 0 0 8px;
-      font-size: clamp(2.1rem, 10vw, 3rem);
-      line-height: 1;
-      letter-spacing: -0.04em;
-      text-shadow: 3px 3px 0 #fff, 5px 5px 0 rgba(41,32,26,0.12);
-    }
-    .resultTitle.clear { color: #237a37; }
-    .resultTitle.gameover { color: #a53a2f; }
-    .resultNote {
-      margin: 0 0 14px;
-      font-weight: 900;
-      color: var(--soft-ink);
-    }
-    .answerLabel {
-      margin: 14px 0 4px;
-      font-size: 0.86rem;
-      font-weight: 1000;
-      color: #437083;
-    }
-    .answerWord {
-      margin: 0;
-      font-size: clamp(2rem, 11vw, 3rem);
-      line-height: 1.05;
-      font-weight: 1000;
-      letter-spacing: 0.08em;
-    }
-    .answerMeaning {
-      margin: 4px 0 18px;
-      font-size: 1.25rem;
-      font-weight: 900;
-    }
-    .resultActions {
-      display: grid;
-      gap: 9px;
-      width: min(100%, 290px);
-      margin: 0 auto;
-    }
-
-    /* Character SVG */
-    .doodleSvg {
-      filter: url(#roughPencilLine);
-    }
-    .doodleSvg .line {
-      fill: none;
-      stroke: var(--ink);
-      stroke-width: 8;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-    }
-    .doodleSvg .thinLine {
-      fill: none;
-      stroke: var(--ink);
-      stroke-width: 5;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-    }
-    .doodleSvg .sketchLine {
-      fill: none;
-      stroke: rgba(41,32,26,0.34);
-      stroke-width: 2.2;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-    }
-    .doodleSvg .faceFill { fill: #fff3d2; }
-    .doodleSvg .cheek { fill: rgba(255,124,116,0.30); }
-    .doodleSvg .eyeDot { fill: #201915; }
-    .doodleSvg .mouth-smile,
-    .doodleSvg .mouth-o,
-    .doodleSvg .mouth-sad { display: none; }
-    .mood-correct .mouth-idle,
-    .mood-clear .mouth-idle,
-    .mood-wrong .mouth-idle,
-    .mood-falling .mouth-idle,
-    .mood-gameover .mouth-idle { display: none; }
-    .mood-correct .mouth-smile,
-    .mood-clear .mouth-smile { display: block; }
-    .mood-wrong .mouth-o,
-    .mood-falling .mouth-o { display: block; }
-    .mood-gameover .mouth-sad { display: block; }
-    .mood-wrong .eyeDot,
-    .mood-falling .eyeDot { transform: translateY(-4px); }
-    .mood-wrong .eyeGroup,
-    .mood-falling .eyeGroup { transform: scale(1.12); transform-origin: center; transform-box: fill-box; }
-    .leftArm, .rightArm, .leftLeg, .rightLeg { transform-box: fill-box; transform-origin: center top; }
-    .mood-falling .leftArm { animation: flailLeft 160ms linear infinite alternate; }
-    .mood-falling .rightArm { animation: flailRight 140ms linear infinite alternate; }
-    .mood-falling .leftLeg { animation: legKickLeft 145ms linear infinite alternate; }
-    .mood-falling .rightLeg { animation: legKickRight 155ms linear infinite alternate; }
-    .mood-falling .headGroup { animation: lookUp 820ms ease-out forwards; transform-origin: 50% 50%; transform-box: fill-box; }
-
-    @keyframes balloonBob {
-      0%, 100% { margin-top: 0; }
-      50% { margin-top: -6px; }
-    }
-    @keyframes popBalloon {
-      0% { opacity: 1; transform: scale(1) rotate(var(--r, 0deg)); filter: blur(0); }
-      45% { opacity: 1; transform: scale(1.22) rotate(5deg); }
-      100% { opacity: 0; transform: scale(0.12) rotate(-20deg); filter: blur(1px); }
-    }
-    @keyframes actorFloat {
-      0%, 100% { transform: translateX(-50%) translateY(0) rotate(-1deg); }
-      50% { transform: translateX(-50%) translateY(-8px) rotate(1.2deg); }
-    }
-    @keyframes actorCorrect {
-      0% { transform: translateX(-50%) scale(1) rotate(0); }
-      45% { transform: translateX(-50%) scale(1.06) translateY(-10px) rotate(-2deg); }
-      100% { transform: translateX(-50%) scale(1) rotate(0); }
-    }
-    @keyframes actorWrong {
-      0% { transform: translateX(-50%) rotate(0); }
-      25% { transform: translateX(calc(-50% - 9px)) rotate(-5deg); }
-      55% { transform: translateX(calc(-50% + 8px)) rotate(4deg); }
-      100% { transform: translateX(-50%) rotate(0); }
-    }
-    @keyframes actorClear {
-      from { transform: translateX(-50%) translateY(-4px) rotate(-2deg); }
-      to { transform: translateX(-50%) translateY(-14px) rotate(2deg); }
-    }
-    @keyframes actorFall {
-      0% { transform: translateX(-50%) translateY(0) rotate(0deg); }
-      35% { transform: translateX(calc(-50% - 18px)) translateY(28px) rotate(-14deg); }
-      100% { transform: translateX(calc(-50% + 28px)) translateY(235px) rotate(18deg); }
-    }
-    @keyframes flailLeft { from { transform: rotate(-38deg); } to { transform: rotate(26deg); } }
-    @keyframes flailRight { from { transform: rotate(36deg); } to { transform: rotate(-24deg); } }
-    @keyframes legKickLeft { from { transform: rotate(20deg); } to { transform: rotate(-26deg); } }
-    @keyframes legKickRight { from { transform: rotate(-22deg); } to { transform: rotate(28deg); } }
-    @keyframes lookUp { to { transform: rotate(-7deg) translateY(-4px); } }
-    @keyframes resultPop {
-      from { opacity: 0; transform: translateY(18px) scale(0.94) rotate(-1deg); }
-      to { opacity: 1; transform: translateY(0) scale(1) rotate(0); }
-    }
-
-    @media (max-height: 660px) {
-      .startMascot { height: 148px; margin-bottom: 8px; }
-      .startMascot.characterActor { width: 150px; height: 150px; }
-      .startCard { padding: 18px 16px; }
-      .startDescription { font-size: 0.94rem; margin-bottom: 12px; }
-      .skyArea { min-height: 170px; }
-      .balloonCluster { transform: translateX(-50%) scale(0.86); top: -2px; }
-      .characterActor { top: 74px; width: min(210px, 54vw); height: min(225px, 54vw); }
-      .wordSlots { min-height: 46px; }
-      .slot { height: 40px; }
-      .key { min-height: 37px; font-size: 1rem; }
-      .keyboard { gap: 5px; padding-top: 4px; }
-      .keyboardRow { gap: 5px; }
-    }
-
-    @media (min-width: 700px) {
-      body { background: #7bcff5; }
-      .app { border-left: 4px solid rgba(41,32,26,0.12); border-right: 4px solid rgba(41,32,26,0.12); }
-    }
-
-
-    /* v0.1.3 clean cute UI override: rough pencil filters removed */
-    html, body {
-      background: #9fe3ff;
-      font-family: "Jua", "Gaegu", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-    }
-
-    body::before,
-    body::after,
-    .doodlePanel::before,
-    .doodlePanel::after,
-    .doodleButton::before,
-    .doodleButton::after,
-    .key::before,
-    .key::after,
-    .resultCard::before,
-    .resultCard::after,
-    .backButton::before,
-    .backButton::after,
-    .soundToggle::before,
-    .soundToggle::after {
-      display: none !important;
-    }
-
-    .app,
-    .playScreen {
-      background:
-        radial-gradient(circle at 18% 15%, rgba(255,255,255,0.45) 0 0.55rem, transparent 0.6rem),
-        radial-gradient(circle at 86% 22%, rgba(255,255,255,0.38) 0 0.42rem, transparent 0.48rem),
-        linear-gradient(180deg, #bdf0ff 0%, #aee9ff 50%, #dff8ff 100%) !important;
-      box-shadow: none !important;
-    }
-
-    .doodlePanel,
-    .doodleButton,
-    .key,
-    .resultCard,
-    .backButton,
-    .soundToggle,
-    .balloon,
-    .doodleSvg {
-      filter: none !important;
-    }
-
-    .doodlePanel,
-    .resultCard {
-      border: 3px solid var(--ink) !important;
-      border-radius: 28px !important;
-      background: rgba(255, 252, 238, 0.96) !important;
-      box-shadow: 0 12px 28px rgba(31, 69, 89, 0.18) !important;
-    }
-
-    .gameTitle {
-      font-family: "Gaegu", "Jua", cursive;
-      font-weight: 700;
-      letter-spacing: -0.03em;
-      text-shadow: 2px 3px 0 #fff7b8, 0 8px 20px rgba(31, 69, 89, 0.12);
-    }
-
-    .subTitle,
-    .topTitle,
-    .messageBox,
-    .slot,
-    .key,
-    .doodleButton,
-    .resultTitle,
-    .answerWord {
-      font-family: "Jua", "Gaegu", "Apple SD Gothic Neo", sans-serif;
-    }
-
-    .doodleButton {
-      border: 3px solid var(--ink) !important;
-      border-radius: 18px !important;
-      background: #fffdf4 !important;
-      box-shadow: 0 6px 0 rgba(41,32,26,0.13), 0 10px 18px rgba(31,69,89,0.10) !important;
-      letter-spacing: 0 !important;
-    }
-
-    .doodleButton.primary {
-      background: linear-gradient(180deg, #ffe77a, #ffd65f) !important;
-    }
-
-    .doodleButton.secondary {
-      background: linear-gradient(180deg, #e7fbff, #c7f0ff) !important;
-    }
-
-    .doodleButton.ghost {
-      background: linear-gradient(180deg, #fff8d7, #ffefb4) !important;
-    }
-
-    .doodleButton.comingSoon,
-    .doodleButton.comingSoon:disabled {
-      color: rgba(41,32,26,0.78) !important;
-      cursor: not-allowed !important;
-      opacity: 0.86 !important;
-      transform: none !important;
-      box-shadow: 0 4px 0 rgba(41,32,26,0.10), 0 8px 16px rgba(31,69,89,0.08) !important;
-    }
-
-    .doodleButton.comingSoon .subLabel {
-      display: block;
-      margin-top: 2px;
-      font-family: "Gaegu", "Jua", cursive;
-      font-size: 0.82rem;
-      font-weight: 700;
-      line-height: 1;
-      opacity: 0.72;
-      text-decoration: underline;
-      text-underline-offset: 2px;
-    }
-
-    .cloud {
-      border: 3px solid rgba(41,32,26,0.30) !important;
-      background: rgba(255,255,255,0.68) !important;
-      filter: none !important;
-    }
-
-    .soundToggle,
-    .backButton,
-    .balloonCount {
-      border: 3px solid rgba(41,32,26,0.82) !important;
-      background: rgba(255, 253, 241, 0.92) !important;
-      box-shadow: 0 5px 14px rgba(31,69,89,0.12) !important;
-    }
-
-    .balloon {
-      border: 3px solid var(--ink) !important;
-      background-image: none !important;
-      background-blend-mode: normal !important;
-      box-shadow: inset -7px -8px 0 rgba(41,32,26,0.08), 0 7px 16px rgba(31,69,89,0.12) !important;
-    }
-
-    .stringBundle span {
-      width: 2px;
-      background: rgba(41,32,26,0.55);
-    }
-
-    .doodleSvg .line {
-      stroke-width: 7px;
-    }
-
-    .doodleSvg .thinLine {
-      stroke-width: 5px;
-    }
-
-    .doodleSvg .sketchLine {
-      display: none;
-    }
-
-    .key {
-      border: 3px solid rgba(41,32,26,0.9) !important;
-      border-radius: 15px !important;
-      background: linear-gradient(180deg, #fffefa, #fff5df) !important;
-      box-shadow: 0 4px 0 rgba(41,32,26,0.12), 0 7px 13px rgba(31,69,89,0.08) !important;
-      font-size: 1.18rem;
-    }
-
-    .key.correct {
-      background: linear-gradient(180deg, #c9f7bd, var(--green)) !important;
-    }
-
-    .key.wrong {
-      background: linear-gradient(180deg, #ffd0c8, var(--red)) !important;
-    }
-
-    .slot {
-      border-bottom: 5px solid rgba(41,32,26,0.82);
-    }
-
-    .resultOverlay {
-      backdrop-filter: blur(3px);
-      background: rgba(77, 169, 211, 0.24);
-    }
-
-
-    /* v0.1.5 balloon chance */
-    .hintArea {
-      display: grid;
-      place-items: center;
-      gap: 3px;
-      margin: 5px 0 4px;
-    }
-
-    .hintButton {
-      min-height: 34px;
-      padding: 5px 14px 6px;
-      border: 3px solid rgba(41,32,26,0.88);
-      border-radius: 999px;
-      background: linear-gradient(180deg, #fff7ff, #eadcff);
-      color: #4d3471;
-      box-shadow: 0 4px 0 rgba(41,32,26,0.12), 0 7px 14px rgba(84,64,124,0.10);
-      font-family: "Jua", "Gaegu", "Apple SD Gothic Neo", sans-serif;
-      font-size: 0.92rem;
-      font-weight: 900;
-      line-height: 1.05;
-      transition: transform 80ms ease, box-shadow 80ms ease, opacity 120ms ease, filter 120ms ease;
-    }
-
-    .hintButton:active:not(:disabled) {
-      transform: translate(1px, 3px);
-      box-shadow: 0 2px 0 rgba(41,32,26,0.12), 0 4px 8px rgba(84,64,124,0.08);
-    }
-
-    .hintButton:disabled {
-      cursor: default;
-      opacity: 0.58;
-      filter: grayscale(0.12);
-    }
-
-    .hintStatus {
-      min-height: 15px;
-      color: #6f5d82;
-      font-family: "Jua", "Gaegu", "Apple SD Gothic Neo", sans-serif;
-      font-size: 0.78rem;
-      font-weight: 800;
-    }
-
-    .key.hint {
-      background: linear-gradient(180deg, #f2e5ff, #dcc5ff) !important;
-      border-color: #6b4aa0 !important;
-      color: #482a79 !important;
-      filter: saturate(1.05);
-    }
-
-    .slot.hint {
-      color: #5a35a0;
-      text-shadow: 2px 2px 0 rgba(255,255,255,0.86), 0 0 12px rgba(189,155,255,0.55);
-      animation: hintReveal 420ms cubic-bezier(.18,.95,.35,1.18);
-    }
-
-    @keyframes hintReveal {
-      0% { transform: translateY(4px) scale(0.86); opacity: 0; }
-      55% { transform: translateY(-3px) scale(1.13); opacity: 1; }
-      100% { transform: translateY(0) scale(1); opacity: 1; }
-    }
-
-    /* v0.1.3 character/string refinement */
-    .stringBundle {
-      position: absolute;
-      left: 50%;
-      top: 40px;
-      width: 240px;
-      height: 170px;
-      transform: translateX(-50%);
-      z-index: 2;
-      pointer-events: none;
-      overflow: visible;
-    }
-
-    .stringBundle path {
-      fill: none;
-      stroke: rgba(41,32,26,0.68);
-      stroke-width: 2.8;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-    }
-
-    .characterActor {
-      z-index: 3;
-    }
-
-    .doodleSvg .line {
-      stroke-width: 6.5px;
-    }
-
-    .doodleSvg .thinLine {
-      stroke-width: 4.5px;
-    }
-
-    .doodleSvg .handFill {
-      fill: #fff3d2;
-      stroke: var(--ink);
-      stroke-width: 5.5;
-    }
-
-    .doodleSvg .gripLine {
-      fill: none;
-      stroke: var(--ink);
-      stroke-width: 3.8;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-    }
-
-    .mood-falling .gripHand,
-    .mood-falling .gripLine {
-      opacity: 0.95;
-    }
-
-
-    /* v0.1.4 difficulty and polish */
-    .balloonCluster {
-      width: 286px;
-      height: 124px;
-    }
-    .balloon:nth-child(1) { left: 4px; top: 34px; background-color: #ffbf75; transform: rotate(-11deg); animation-delay: -1.4s; }
-    .balloon:nth-child(2) { left: 40px; top: 6px; background-color: #ff9fba; transform: rotate(-7deg); animation-delay: -0.3s; }
-    .balloon:nth-child(3) { left: 82px; top: 0; background-color: #ffe06d; transform: rotate(5deg); animation-delay: -1.2s; }
-    .balloon:nth-child(4) { left: 124px; top: 28px; background-color: #9fe7ff; transform: rotate(-4deg); animation-delay: -0.8s; }
-    .balloon:nth-child(5) { left: 164px; top: 2px; background-color: #aef19b; transform: rotate(9deg); animation-delay: -1.7s; }
-    .balloon:nth-child(6) { left: 204px; top: 24px; background-color: #d2b2ff; transform: rotate(13deg); animation-delay: -0.6s; }
-    .balloon:nth-child(7) { left: 236px; top: 62px; background-color: #ffb3d9; transform: rotate(8deg); animation-delay: -1.0s; }
-
-    .stringBundle {
-      width: 286px !important;
-      top: 42px !important;
-    }
-
-    .stringBundle path.popped {
-      opacity: 0;
-      transition: opacity 120ms ease;
-    }
-
-    .resultBalloons {
-      margin: -6px 0 12px;
-      font-family: "Jua", "Gaegu", "Apple SD Gothic Neo", sans-serif;
-      font-size: 1rem;
-      font-weight: 900;
-      color: #32687a;
-    }
-
-    .soundToggle {
-      min-width: 116px;
-      text-align: center;
-    }
-
-    @media (max-height: 660px) {
-      .balloonCluster { transform: translateX(-50%) scale(0.82); }
-      .stringBundle { transform: translateX(-50%) scale(0.82); transform-origin: 50% 0; }
-    }
-
-  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=Jua&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css?v=0.2.0">
 </head>
 <body>
-  <svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute; left:-9999px; top:-9999px;">
-    <filter id="roughPencilEdge" x="-8%" y="-8%" width="116%" height="116%">
-      <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="8" result="noise" />
-      <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.15" xChannelSelector="R" yChannelSelector="G" />
-    </filter>
-    <filter id="roughPencilLine" x="-12%" y="-12%" width="124%" height="124%">
-      <feTurbulence type="fractalNoise" baseFrequency="0.055" numOctaves="2" seed="11" result="noise" />
-      <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.65" xChannelSelector="R" yChannelSelector="G" />
-    </filter>
-  </svg>
-  <div id="app" class="app">
-    <section id="startScreen" class="screen startScreen">
-      <div class="cloud cloudOne"></div>
-      <div class="cloud cloudTwo"></div>
-      <div class="cloud cloudThree"></div>
+  <main class="app" id="app">
+    <div class="ambient-cloud cloud-a" aria-hidden="true"></div>
+    <div class="ambient-cloud cloud-b" aria-hidden="true"></div>
+    <div class="ambient-cloud cloud-c" aria-hidden="true"></div>
 
-      <button id="soundToggle" class="soundToggle" type="button" aria-pressed="true">🔊 효과음 ON</button>
+    <button class="sound-toggle" id="soundToggle" type="button" aria-pressed="true" aria-label="효과음 끄기">
+      <span class="sound-icon" aria-hidden="true">🔊</span>
+      <span class="sound-label">ON</span>
+    </button>
 
-      <div class="startCard doodlePanel">
-        <h1 class="gameTitle">풍선 행맨</h1>
-        <p class="subTitle">Balloon Hangman</p>
-        <div id="startMascot" class="startMascot characterActor mood-idle" aria-hidden="true"></div>
-        <p class="startDescription">풍선이 모두 터지기 전에<br>숨겨진 영어 단어를 맞혀보세요!</p>
-        <div class="startActions">
-          <button id="startBtn" class="doodleButton primary" type="button">START</button>
-          <button id="startHeavenLink" class="doodleButton secondary" type="button">띵보 게임 천국으로 돌아가기</button>
+    <section class="screen start-screen is-active" id="startScreen" aria-labelledby="startTitle">
+      <div class="title-card">
+        <p class="eyebrow">BALLOON WORD GAME</p>
+        <h1 id="startTitle">풍선 행맨</h1>
+        <p class="english-title">Balloon Hangman</p>
+
+        <div class="start-hero" aria-hidden="true">
+          <svg viewBox="0 0 360 310" role="img">
+            <g class="preview-cluster">
+              <g class="preview-balloon b1"><ellipse cx="79" cy="66" rx="31" ry="38"/><path d="M79 104l-7 10h14z"/></g>
+              <g class="preview-balloon b2"><ellipse cx="132" cy="43" rx="31" ry="38"/><path d="M132 81l-7 10h14z"/></g>
+              <g class="preview-balloon b3"><ellipse cx="185" cy="58" rx="31" ry="38"/><path d="M185 96l-7 10h14z"/></g>
+              <g class="preview-balloon b4"><ellipse cx="238" cy="42" rx="31" ry="38"/><path d="M238 80l-7 10h14z"/></g>
+              <g class="preview-balloon b5"><ellipse cx="286" cy="72" rx="31" ry="38"/><path d="M286 110l-7 10h14z"/></g>
+              <path class="preview-string" d="M79 113 Q119 132 198 164"/>
+              <path class="preview-string" d="M132 90 Q151 119 198 164"/>
+              <path class="preview-string" d="M185 105 Q190 132 198 164"/>
+              <path class="preview-string" d="M238 89 Q224 124 198 164"/>
+              <path class="preview-string" d="M286 119 Q247 140 198 164"/>
+              <g class="preview-person">
+                <circle cx="177" cy="190" r="29"/>
+                <circle class="face-dot" cx="167" cy="186" r="3.5"/>
+                <circle class="face-dot" cx="187" cy="186" r="3.5"/>
+                <path class="smile" d="M166 199 Q177 208 188 199"/>
+                <path d="M177 219 L177 264"/>
+                <path d="M177 230 L198 206 L198 164"/>
+                <path d="M177 232 L149 247"/>
+                <path d="M177 264 L156 295"/>
+                <path d="M177 264 L205 294"/>
+                <circle class="hand" cx="198" cy="164" r="6"/>
+              </g>
+            </g>
+          </svg>
+        </div>
+
+        <p class="start-copy">풍선이 모두 터지기 전에<br>영어 단어를 맞혀보세요!</p>
+
+        <div class="start-actions">
+          <button class="button button-primary" id="startButton" type="button">START</button>
+          <button class="button button-secondary" id="startHeavenButton" type="button">띵보 게임 천국으로 돌아가기</button>
         </div>
       </div>
-      <div id="versionText" class="versionText">v0.1.6</div>
+      <span class="version">v0.2.0</span>
     </section>
 
-    <section id="playScreen" class="screen playScreen hidden" aria-live="polite">
-      <header class="topBar">
-        <button id="backToStartBtn" class="backButton" type="button" aria-label="시작 화면으로 돌아가기">‹</button>
-        <div class="topTitle">풍선 행맨</div>
-        <div id="balloonCount" class="balloonCount">🎈 7</div>
+    <section class="screen play-screen" id="playScreen" aria-labelledby="playTitle" aria-hidden="true">
+      <header class="top-bar">
+        <button class="icon-button" id="backButton" type="button" aria-label="시작 화면으로 돌아가기">←</button>
+        <div class="top-heading">
+          <strong id="playTitle">풍선 행맨</strong>
+          <span>Balloon Hangman</span>
+        </div>
+        <div class="balloon-counter" aria-live="polite">
+          <span aria-hidden="true">🎈</span>
+          <strong id="balloonCount">7</strong>
+        </div>
       </header>
 
-      <main class="playMain">
-        <div id="skyArea" class="skyArea">
-          <div class="cloud cloudOne"></div>
-          <div class="cloud cloudTwo"></div>
-          <div id="balloonCluster" class="balloonCluster"></div>
-          <svg id="stringBundle" class="stringBundle" viewBox="0 0 286 170" aria-hidden="true" focusable="false"></svg>
-          <div id="characterActor" class="characterActor mood-idle" aria-hidden="true"></div>
-        </div>
+      <div class="play-layout">
+        <section class="stage" id="stage" aria-label="풍선에 매달린 캐릭터">
+          <div class="stage-glow" aria-hidden="true"></div>
+          <svg class="game-scene" id="gameScene" viewBox="0 0 360 330" role="img" aria-label="풍선 일곱 개를 한 손으로 잡고 있는 귀여운 졸라맨">
+            <g class="scene-actor" id="sceneActor">
+              <g class="string-layer" id="stringLayer">
+                <path class="balloon-string string-0" d="M52 101 Q108 125 196 174"/>
+                <path class="balloon-string string-1" d="M101 83 Q132 120 196 174"/>
+                <path class="balloon-string string-2" d="M151 108 Q165 132 196 174"/>
+                <path class="balloon-string string-3" d="M202 78 Q202 125 196 174"/>
+                <path class="balloon-string string-4" d="M254 103 Q235 137 196 174"/>
+                <path class="balloon-string string-5" d="M305 87 Q258 130 196 174"/>
+                <path class="balloon-string string-6" d="M323 135 Q267 148 196 174"/>
+              </g>
 
-        <section class="wordPanel" aria-label="단어 맞히기 영역">
-          <div id="wordSlots" class="wordSlots"></div>
-          <div class="hintArea">
-            <button id="hintBtn" class="hintButton" type="button">🎈 풍선 찬스</button>
-            <div id="hintStatus" class="hintStatus">풍선 1개로 글자 보기</div>
-          </div>
-          <div id="messageBox" class="messageBox">알파벳을 골라보세요!</div>
+              <g class="balloon-group balloon-0" data-balloon-index="0">
+                <ellipse class="balloon-shape pink" cx="52" cy="61" rx="31" ry="39"/>
+                <ellipse class="balloon-shine" cx="42" cy="48" rx="8" ry="12"/>
+                <path class="balloon-knot pink" d="M52 100 l-7 11 h14 z"/>
+                <g class="pop-burst"><path d="M52 61l0-24M52 61l22-15M52 61l24 8M52 61l13 23M52 61l-13 23M52 61l-24 7M52 61l-22-15"/><text x="52" y="66">POP!</text></g>
+              </g>
+              <g class="balloon-group balloon-1" data-balloon-index="1">
+                <ellipse class="balloon-shape yellow" cx="101" cy="43" rx="31" ry="39"/>
+                <ellipse class="balloon-shine" cx="91" cy="30" rx="8" ry="12"/>
+                <path class="balloon-knot yellow" d="M101 82 l-7 11 h14 z"/>
+                <g class="pop-burst"><path d="M101 43l0-24M101 43l22-15M101 43l24 8M101 43l13 23M101 43l-13 23M101 43l-24 7M101 43l-22-15"/><text x="101" y="48">POP!</text></g>
+              </g>
+              <g class="balloon-group balloon-2" data-balloon-index="2">
+                <ellipse class="balloon-shape blue" cx="151" cy="68" rx="31" ry="39"/>
+                <ellipse class="balloon-shine" cx="141" cy="55" rx="8" ry="12"/>
+                <path class="balloon-knot blue" d="M151 107 l-7 11 h14 z"/>
+                <g class="pop-burst"><path d="M151 68l0-24M151 68l22-15M151 68l24 8M151 68l13 23M151 68l-13 23M151 68l-24 7M151 68l-22-15"/><text x="151" y="73">POP!</text></g>
+              </g>
+              <g class="balloon-group balloon-3" data-balloon-index="3">
+                <ellipse class="balloon-shape green" cx="202" cy="38" rx="31" ry="39"/>
+                <ellipse class="balloon-shine" cx="192" cy="25" rx="8" ry="12"/>
+                <path class="balloon-knot green" d="M202 77 l-7 11 h14 z"/>
+                <g class="pop-burst"><path d="M202 38l0-24M202 38l22-15M202 38l24 8M202 38l13 23M202 38l-13 23M202 38l-24 7M202 38l-22-15"/><text x="202" y="43">POP!</text></g>
+              </g>
+              <g class="balloon-group balloon-4" data-balloon-index="4">
+                <ellipse class="balloon-shape purple" cx="254" cy="63" rx="31" ry="39"/>
+                <ellipse class="balloon-shine" cx="244" cy="50" rx="8" ry="12"/>
+                <path class="balloon-knot purple" d="M254 102 l-7 11 h14 z"/>
+                <g class="pop-burst"><path d="M254 63l0-24M254 63l22-15M254 63l24 8M254 63l13 23M254 63l-13 23M254 63l-24 7M254 63l-22-15"/><text x="254" y="68">POP!</text></g>
+              </g>
+              <g class="balloon-group balloon-5" data-balloon-index="5">
+                <ellipse class="balloon-shape orange" cx="305" cy="47" rx="31" ry="39"/>
+                <ellipse class="balloon-shine" cx="295" cy="34" rx="8" ry="12"/>
+                <path class="balloon-knot orange" d="M305 86 l-7 11 h14 z"/>
+                <g class="pop-burst"><path d="M305 47l0-24M305 47l22-15M305 47l24 8M305 47l13 23M305 47l-13 23M305 47l-24 7M305 47l-22-15"/><text x="305" y="52">POP!</text></g>
+              </g>
+              <g class="balloon-group balloon-6" data-balloon-index="6">
+                <ellipse class="balloon-shape coral" cx="323" cy="95" rx="31" ry="39"/>
+                <ellipse class="balloon-shine" cx="313" cy="82" rx="8" ry="12"/>
+                <path class="balloon-knot coral" d="M323 134 l-7 11 h14 z"/>
+                <g class="pop-burst"><path d="M323 95l0-24M323 95l22-15M323 95l24 8M323 95l13 23M323 95l-13 23M323 95l-24 7M323 95l-22-15"/><text x="323" y="100">POP!</text></g>
+              </g>
+
+              <g class="character" id="character">
+                <g class="head-group">
+                  <circle class="head" cx="177" cy="205" r="31"/>
+                  <path class="brow brow-left" d="M160 193 Q166 189 172 193"/>
+                  <path class="brow brow-right" d="M182 193 Q188 189 194 193"/>
+                  <circle class="eye eye-left" cx="166" cy="201" r="3.8"/>
+                  <circle class="eye eye-right" cx="188" cy="201" r="3.8"/>
+                  <path class="mouth mouth-idle" d="M166 214 Q177 221 188 214"/>
+                  <path class="mouth mouth-open" d="M168 211 Q177 225 186 211 Q177 207 168 211Z"/>
+                  <circle class="cheek cheek-left" cx="158" cy="211" r="4"/>
+                  <circle class="cheek cheek-right" cx="196" cy="211" r="4"/>
+                </g>
+                <path class="body-line torso" d="M177 236 L177 279"/>
+                <g class="limb arm-holding">
+                  <path class="body-line" d="M177 246 Q188 229 196 212 L196 174"/>
+                  <circle class="hand-fill" cx="196" cy="174" r="7"/>
+                </g>
+                <g class="limb arm-free">
+                  <path class="body-line" d="M177 246 Q158 246 144 260"/>
+                  <circle class="hand-fill" cx="143" cy="261" r="5.5"/>
+                </g>
+                <g class="limb leg-left"><path class="body-line" d="M177 279 Q167 294 155 313"/><path class="foot" d="M154 313q-7 3-11 0"/></g>
+                <g class="limb leg-right"><path class="body-line" d="M177 279 Q191 294 206 311"/><path class="foot" d="M206 311q7 3 11-1"/></g>
+              </g>
+            </g>
+          </svg>
+          <div class="stage-message" id="stageMessage" aria-live="polite">알파벳을 골라보세요!</div>
         </section>
-      </main>
 
-      <nav id="keyboard" class="keyboard" aria-label="알파벳 키보드"></nav>
+        <section class="word-area" aria-label="정답 단어">
+          <div class="word-slots" id="wordSlots" aria-live="polite"></div>
+          <div class="chance-row">
+            <button class="chance-button" id="hintButton" type="button">
+              <span aria-hidden="true">🎈</span>
+              <span>풍선 찬스</span>
+              <small>풍선 1개로 글자 보기</small>
+            </button>
+            <span class="chance-status" id="hintStatus" aria-live="polite"></span>
+          </div>
+        </section>
+
+        <section class="keyboard" id="keyboard" aria-label="알파벳 키보드"></section>
+      </div>
     </section>
 
-    <div id="resultOverlay" class="resultOverlay hidden" role="dialog" aria-modal="true" aria-labelledby="resultTitle">
-      <div class="resultCard">
-        <h2 id="resultTitle" class="resultTitle">CLEAR!</h2>
-        <p id="resultNote" class="resultNote">풍선을 지켰어요!</p>
-        <p id="resultBalloons" class="resultBalloons">남은 풍선: 7개</p>
-        <p class="answerLabel">정답</p>
-        <p id="answerWord" class="answerWord">BALLOON</p>
-        <p class="answerLabel">뜻</p>
-        <p id="answerMeaning" class="answerMeaning">풍선</p>
-        <div class="resultActions">
-          <button id="againBtn" class="doodleButton primary" type="button">한 번 더</button>
-          <button id="resultStartBtn" class="doodleButton ghost" type="button">시작 화면</button>
-          <button id="resultHeavenLink" class="doodleButton secondary" type="button">띵보 게임 천국으로 돌아가기</button>
+    <div class="result-overlay" id="resultOverlay" role="dialog" aria-modal="true" aria-labelledby="resultTitle" hidden>
+      <div class="result-card" id="resultCard">
+        <div class="result-badge" id="resultBadge" aria-hidden="true">✨</div>
+        <h2 id="resultTitle">CLEAR!</h2>
+        <p class="result-summary" id="resultSummary"></p>
+        <div class="answer-block">
+          <span>정답</span>
+          <strong id="answerWord"></strong>
+          <em id="answerMeaning"></em>
+        </div>
+        <p class="remaining-text" id="remainingText"></p>
+        <div class="result-actions">
+          <button class="button button-primary" id="againButton" type="button">한 번 더</button>
+          <button class="button button-ghost" id="homeButton" type="button">시작 화면</button>
+          <button class="button button-secondary" id="resultHeavenButton" type="button">띵보 게임 천국으로 돌아가기</button>
         </div>
       </div>
     </div>
-  </div>
+  </main>
 
-  <script src="./words.js"></script>
-  <script>
-    (() => {
-      'use strict';
-
-      const CONFIG = Object.freeze({
-        version: 'v0.1.6',
-        gameHeavenUrl: 'https://kih0o0n.github.io/DDingboGameHeaven/',
-        maxWrong: 7,
-        recentWordMemory: 5,
-        balloonPopOrder: [6, 5, 4, 0, 1, 2, 3],
-        clearDelayMs: 400,
-        gameOverDelayMs: 800,
-        keyboardRows: ['ABCDEFG', 'HIJKLMN', 'OPQRSTU', 'VWXYZ']
-      });
-
-      const refs = {};
-      const state = {
-        screen: 'start',
-        currentEntry: null,
-        guessedLetters: new Set(),
-        correctLetters: new Set(),
-        wrongLetters: new Set(),
-        hintLetters: new Set(),
-        remainingBalloons: CONFIG.maxWrong,
-        poppedBalloons: 0,
-        hintUsed: false,
-        revealAnswer: false,
-        recentWords: [],
-        acceptingInput: false,
-        lastWord: null,
-        resultTimer: null,
-        moodTimer: null
-      };
-
-      const wordLibrary = normalizeWordLibrary(window.WORD_LIBRARY);
-
-      const sound = {
-        enabled: localStorage.getItem('balloonHangmanSound') !== 'off',
-        ctx: null,
-        unlock() {
-          if (!this.enabled) return;
-          if (!this.ctx) {
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            if (!AudioContext) return;
-            this.ctx = new AudioContext();
-          }
-          if (this.ctx.state === 'suspended') this.ctx.resume();
-        },
-        tone(freq, duration = 0.08, type = 'sine', gainValue = 0.045, startDelay = 0) {
-          if (!this.enabled) return;
-          this.unlock();
-          if (!this.ctx) return;
-          const now = this.ctx.currentTime + startDelay;
-          const osc = this.ctx.createOscillator();
-          const gain = this.ctx.createGain();
-          osc.type = type;
-          osc.frequency.setValueAtTime(freq, now);
-          gain.gain.setValueAtTime(0.0001, now);
-          gain.gain.exponentialRampToValueAtTime(gainValue, now + 0.01);
-          gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-          osc.connect(gain).connect(this.ctx.destination);
-          osc.start(now);
-          osc.stop(now + duration + 0.02);
-        },
-        tap() { this.tone(420, 0.045, 'triangle', 0.035); },
-        correct() {
-          this.tone(620, 0.08, 'sine', 0.075);
-          this.tone(820, 0.09, 'sine', 0.065, 0.055);
-        },
-        pop() {
-          if (!this.enabled) return;
-          this.unlock();
-          if (!this.ctx) return;
-          const now = this.ctx.currentTime;
-          const bufferSize = Math.floor(this.ctx.sampleRate * 0.12);
-          const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-          const data = buffer.getChannelData(0);
-          for (let i = 0; i < bufferSize; i++) {
-            const t = i / bufferSize;
-            data[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, 1.7);
-          }
-          const noise = this.ctx.createBufferSource();
-          const gain = this.ctx.createGain();
-          const filter = this.ctx.createBiquadFilter();
-          filter.type = 'bandpass';
-          filter.frequency.setValueAtTime(1250, now);
-          filter.Q.setValueAtTime(0.85, now);
-          gain.gain.setValueAtTime(0.42, now);
-          gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
-          noise.buffer = buffer;
-          noise.connect(filter).connect(gain).connect(this.ctx.destination);
-          noise.start(now);
-          noise.stop(now + 0.13);
-
-          const snap = this.ctx.createOscillator();
-          const snapGain = this.ctx.createGain();
-          snap.type = 'square';
-          snap.frequency.setValueAtTime(180, now);
-          snap.frequency.exponentialRampToValueAtTime(92, now + 0.08);
-          snapGain.gain.setValueAtTime(0.09, now);
-          snapGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.09);
-          snap.connect(snapGain).connect(this.ctx.destination);
-          snap.start(now);
-          snap.stop(now + 0.1);
-        },
-        success() {
-          [523, 659, 784, 1046].forEach((freq, idx) => this.tone(freq, 0.10, 'triangle', 0.075, idx * 0.06));
-        },
-        fail() {
-          if (!this.enabled) return;
-          this.unlock();
-          if (!this.ctx) return;
-          const now = this.ctx.currentTime;
-          const osc = this.ctx.createOscillator();
-          const gain = this.ctx.createGain();
-          osc.type = 'sawtooth';
-          osc.frequency.setValueAtTime(360, now);
-          osc.frequency.exponentialRampToValueAtTime(90, now + 0.45);
-          gain.gain.setValueAtTime(0.0001, now);
-          gain.gain.exponentialRampToValueAtTime(0.08, now + 0.02);
-          gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.48);
-          osc.connect(gain).connect(this.ctx.destination);
-          osc.start(now);
-          osc.stop(now + 0.5);
-        }
-      };
-
-      document.addEventListener('DOMContentLoaded', init);
-
-      function init() {
-        refs.app = document.getElementById('app');
-        refs.startScreen = document.getElementById('startScreen');
-        refs.playScreen = document.getElementById('playScreen');
-        refs.resultOverlay = document.getElementById('resultOverlay');
-        refs.startMascot = document.getElementById('startMascot');
-        refs.characterActor = document.getElementById('characterActor');
-        refs.skyArea = document.getElementById('skyArea');
-        refs.balloonCluster = document.getElementById('balloonCluster');
-        refs.stringBundle = document.getElementById('stringBundle');
-        refs.balloonCount = document.getElementById('balloonCount');
-        refs.wordSlots = document.getElementById('wordSlots');
-        refs.messageBox = document.getElementById('messageBox');
-        refs.keyboard = document.getElementById('keyboard');
-        refs.hintBtn = document.getElementById('hintBtn');
-        refs.hintStatus = document.getElementById('hintStatus');
-        refs.resultTitle = document.getElementById('resultTitle');
-        refs.resultNote = document.getElementById('resultNote');
-        refs.answerWord = document.getElementById('answerWord');
-        refs.answerMeaning = document.getElementById('answerMeaning');
-        refs.resultBalloons = document.getElementById('resultBalloons');
-        refs.soundToggle = document.getElementById('soundToggle');
-        refs.startHeavenLink = document.getElementById('startHeavenLink');
-        refs.resultHeavenLink = document.getElementById('resultHeavenLink');
-        refs.versionText = document.getElementById('versionText');
-
-        refs.versionText.textContent = CONFIG.version;
-        refs.startMascot.innerHTML = getCharacterSvg();
-        refs.characterActor.innerHTML = getCharacterSvg();
-
-        buildKeyboard();
-        updateSoundToggle();
-
-        document.getElementById('startBtn').addEventListener('click', () => {
-          sound.unlock();
-          sound.tap();
-          if (wordLibrary.length === 0) {
-            setStartDescriptionError();
-            return;
-          }
-          startGame();
-        });
-        document.getElementById('backToStartBtn').addEventListener('click', () => {
-          sound.tap();
-          showStartScreen();
-        });
-        document.getElementById('againBtn').addEventListener('click', () => {
-          sound.tap();
-          startGame();
-        });
-        document.getElementById('resultStartBtn').addEventListener('click', () => {
-          sound.tap();
-          showStartScreen();
-        });
-        refs.soundToggle.addEventListener('click', () => {
-          sound.enabled = !sound.enabled;
-          localStorage.setItem('balloonHangmanSound', sound.enabled ? 'on' : 'off');
-          updateSoundToggle();
-          if (sound.enabled) {
-            sound.unlock();
-            sound.correct();
-          }
-        });
-
-        refs.startHeavenLink.addEventListener('click', goToGameHeaven);
-        refs.resultHeavenLink.addEventListener('click', goToGameHeaven);
-
-        refs.hintBtn.addEventListener('click', handleHintChance);
-
-        document.addEventListener('keydown', event => {
-          if (!state.acceptingInput || state.screen !== 'playing') return;
-          const letter = event.key.toUpperCase();
-          if (/^[A-Z]$/.test(letter)) handleGuess(letter);
-        });
-
-        showStartScreen();
-      }
-
-      function normalizeWordLibrary(rawLibrary) {
-        if (!Array.isArray(rawLibrary)) return [];
-        const seen = new Set();
-        return rawLibrary
-          .map(entry => ({
-            word: String(entry.word || '').trim().toUpperCase(),
-            meaning: String(entry.meaning || '').trim()
-          }))
-          .filter(entry => {
-            if (!/^[A-Z]{5,9}$/.test(entry.word)) return false;
-            if (!entry.meaning) return false;
-            if (seen.has(entry.word)) return false;
-            seen.add(entry.word);
-            return true;
-          });
-      }
-
-      function setStartDescriptionError() {
-        const description = document.querySelector('.startDescription');
-        description.innerHTML = 'words.js 단어 라이브러리를<br>먼저 확인해 주세요!';
-      }
-
-      function updateSoundToggle() {
-        refs.soundToggle.textContent = sound.enabled ? '🔊 효과음 ON' : '🔇 효과음 OFF';
-        refs.soundToggle.setAttribute('aria-pressed', String(sound.enabled));
-      }
-
-      function goToGameHeaven() {
-        sound.unlock();
-        sound.tap();
-        window.location.href = CONFIG.gameHeavenUrl;
-      }
-
-      function showStartScreen() {
-        clearTimers();
-        state.screen = 'start';
-        state.acceptingInput = false;
-        refs.startScreen.classList.remove('hidden');
-        refs.playScreen.classList.add('hidden');
-        refs.resultOverlay.classList.add('hidden');
-        refs.skyArea.classList.remove('falling');
-        setMood(refs.startMascot, 'idle');
-        updateHintButton();
-      }
-
-      function startGame() {
-        clearTimers();
-        state.screen = 'playing';
-        state.currentEntry = pickWord();
-        rememberRecentWord(state.currentEntry.word);
-        state.guessedLetters = new Set();
-        state.correctLetters = new Set();
-        state.wrongLetters = new Set();
-        state.hintLetters = new Set();
-        state.remainingBalloons = CONFIG.maxWrong;
-        state.poppedBalloons = 0;
-        state.hintUsed = false;
-        state.revealAnswer = false;
-        state.acceptingInput = true;
-        state.lastWord = state.currentEntry.word;
-
-        refs.startScreen.classList.add('hidden');
-        refs.playScreen.classList.remove('hidden');
-        refs.resultOverlay.classList.add('hidden');
-        refs.skyArea.classList.remove('falling');
-        refs.characterActor.innerHTML = getCharacterSvg();
-        setMood(refs.characterActor, 'idle');
-
-        renderBalloons();
-        renderStrings();
-        renderWordSlots();
-        renderKeyboard();
-        renderBalloonCount();
-        updateHintButton();
-        setMessage('알파벳을 골라보세요!');
-      }
-
-      function clearTimers() {
-        if (state.resultTimer) clearTimeout(state.resultTimer);
-        if (state.moodTimer) clearTimeout(state.moodTimer);
-        state.resultTimer = null;
-        state.moodTimer = null;
-      }
-
-      function pickWord() {
-        const recentSet = new Set(state.recentWords);
-        let pool = wordLibrary.filter(entry => !recentSet.has(entry.word));
-        if (pool.length === 0) pool = wordLibrary;
-        return pool[Math.floor(Math.random() * pool.length)];
-      }
-
-      function rememberRecentWord(word) {
-        state.recentWords = state.recentWords.filter(item => item !== word);
-        state.recentWords.push(word);
-        while (state.recentWords.length > CONFIG.recentWordMemory) {
-          state.recentWords.shift();
-        }
-      }
-
-      function buildKeyboard() {
-        refs.keyboard.innerHTML = '';
-        CONFIG.keyboardRows.forEach(rowText => {
-          const row = document.createElement('div');
-          row.className = `keyboardRow row${rowText.length}`;
-          rowText.split('').forEach(letter => {
-            const button = document.createElement('button');
-            button.type = 'button';
-            button.className = 'key';
-            button.textContent = letter;
-            button.dataset.letter = letter;
-            button.setAttribute('aria-label', `${letter} 선택`);
-            button.addEventListener('click', () => handleGuess(letter));
-            row.appendChild(button);
-          });
-          refs.keyboard.appendChild(row);
-        });
-      }
-
-      function handleGuess(letter) {
-        if (!state.acceptingInput || state.guessedLetters.has(letter)) return;
-        sound.unlock();
-        state.guessedLetters.add(letter);
-
-        if (state.currentEntry.word.includes(letter)) {
-          state.correctLetters.add(letter);
-          sound.correct();
-          setMessage(randomPick(['좋아요!', '맞았어요!', 'NICE!', 'GOOD!']));
-          setMood(refs.characterActor, 'correct');
-          renderWordSlots();
-          renderKeyboard();
-          updateHintButton();
-
-          if (isWordComplete()) {
-            state.acceptingInput = false;
-            setMood(refs.characterActor, 'clear');
-            sound.success();
-            state.resultTimer = setTimeout(() => showResult('clear'), CONFIG.clearDelayMs);
-          } else {
-            queueMoodIdle(560);
-          }
-          return;
-        }
-
-        state.wrongLetters.add(letter);
-        state.remainingBalloons = Math.max(0, state.remainingBalloons - 1);
-        sound.pop();
-        popNextBalloon();
-        renderKeyboard();
-        renderBalloonCount();
-        updateHintButton();
-
-        if (state.remainingBalloons <= 0) {
-          state.acceptingInput = false;
-          setMessage('앗! 마지막 풍선이 터졌어요!');
-          refs.skyArea.classList.add('falling');
-          setMood(refs.characterActor, 'falling');
-          state.revealAnswer = true;
-          renderWordSlots();
-          sound.fail();
-          state.resultTimer = setTimeout(() => showResult('gameover'), CONFIG.gameOverDelayMs);
-        } else {
-          setMessage(randomPick(['Oops!', '풍선 하나가 터졌어요!', '다시 골라보세요!']));
-          setMood(refs.characterActor, 'wrong');
-          queueMoodIdle(520);
-        }
-      }
-
-      function handleHintChance() {
-        if (!state.acceptingInput || state.hintUsed) return;
-        if (state.remainingBalloons <= 1) {
-          setMessage('풍선이 부족해요!');
-          updateHintButton();
-          return;
-        }
-
-        const letter = pickLeastHelpfulHiddenLetter();
-        if (!letter) return;
-
-        sound.unlock();
-        state.hintUsed = true;
-        state.guessedLetters.add(letter);
-        state.correctLetters.add(letter);
-        state.hintLetters.add(letter);
-        state.remainingBalloons = Math.max(0, state.remainingBalloons - 1);
-
-        sound.pop();
-        popNextBalloon();
-        renderWordSlots();
-        renderKeyboard();
-        renderBalloonCount();
-        updateHintButton();
-        setMessage(`풍선 찬스로 ${letter} 공개!`);
-        setMood(refs.characterActor, 'wrong');
-
-        if (isWordComplete()) {
-          state.acceptingInput = false;
-          setMood(refs.characterActor, 'clear');
-          sound.success();
-          state.resultTimer = setTimeout(() => showResult('clear'), CONFIG.clearDelayMs);
-        } else {
-          queueMoodIdle(620);
-        }
-      }
-
-      function pickLeastHelpfulHiddenLetter() {
-        const word = state.currentEntry.word;
-        const counts = new Map();
-        for (const letter of word) {
-          if (!state.correctLetters.has(letter)) {
-            counts.set(letter, (counts.get(letter) || 0) + 1);
-          }
-        }
-        const entries = [...counts.entries()];
-        if (entries.length === 0) return '';
-        const minCount = Math.min(...entries.map(([, count]) => count));
-        const candidates = entries.filter(([, count]) => count === minCount).map(([letter]) => letter);
-        return randomPick(candidates);
-      }
-
-      function updateHintButton() {
-        if (!refs.hintBtn || !refs.hintStatus) return;
-        const hasHiddenLetters = state.currentEntry && [...new Set(state.currentEntry.word.split(''))].some(letter => !state.correctLetters.has(letter));
-        const canUse = state.screen === 'playing' && state.acceptingInput && !state.hintUsed && state.remainingBalloons > 1 && hasHiddenLetters;
-        refs.hintBtn.disabled = !canUse;
-
-        if (state.hintUsed) {
-          refs.hintBtn.textContent = '사용 완료';
-          refs.hintStatus.textContent = '찬스 글자는 연보라색이에요';
-        } else if (state.remainingBalloons <= 1 && state.screen === 'playing') {
-          refs.hintBtn.textContent = '풍선 부족';
-          refs.hintStatus.textContent = '풍선이 2개 이상 필요해요';
-        } else {
-          refs.hintBtn.textContent = '🎈 풍선 찬스';
-          refs.hintStatus.textContent = '풍선 1개로 글자 보기';
-        }
-      }
-
-      function queueMoodIdle(delayMs) {
-        if (state.moodTimer) clearTimeout(state.moodTimer);
-        state.moodTimer = setTimeout(() => {
-          if (state.screen === 'playing' && state.acceptingInput) setMood(refs.characterActor, 'idle');
-        }, delayMs);
-      }
-
-      function isWordComplete() {
-        return [...new Set(state.currentEntry.word.split(''))].every(letter => state.correctLetters.has(letter));
-      }
-
-      function renderBalloons() {
-        refs.balloonCluster.innerHTML = Array.from({ length: CONFIG.maxWrong }, (_, index) => (
-          `<div class="balloon" data-index="${index}"><span class="popWord">POP!</span></div>`
-        )).join('');
-      }
-
-      function renderStrings() {
-        const paths = [
-          'M28 82 C42 112 58 137 78 158',
-          'M62 35 C66 82 71 121 78 158',
-          'M104 25 C98 76 89 120 78 158',
-          'M143 56 C123 95 100 127 78 158',
-          'M181 25 C145 77 111 119 78 158',
-          'M220 52 C166 96 125 129 78 158',
-          'M260 88 C190 114 137 138 78 158'
-        ];
-        refs.stringBundle.innerHTML = paths.map((d, index) =>
-          `<path data-index="${index}" d="${d}" />`
-        ).join('');
-      }
-
-      function popNextBalloon() {
-        const popPosition = state.poppedBalloons;
-        const index = CONFIG.balloonPopOrder[popPosition] ?? popPosition;
-        const balloon = refs.balloonCluster.querySelector(`[data-index="${index}"]`);
-        const string = refs.stringBundle.querySelector(`[data-index="${index}"]`);
-        if (balloon) balloon.classList.add('popped');
-        if (string) string.classList.add('popped');
-        state.poppedBalloons = Math.min(CONFIG.maxWrong, state.poppedBalloons + 1);
-      }
-
-      function renderBalloonCount() {
-        refs.balloonCount.textContent = `🎈 ${Math.max(0, state.remainingBalloons)}`;
-      }
-
-      function renderWordSlots() {
-        const word = state.currentEntry.word;
-        refs.wordSlots.innerHTML = word.split('').map(letter => {
-          const shown = state.revealAnswer || state.correctLetters.has(letter) ? letter : '';
-          const isHint = shown && state.hintLetters.has(letter) && !state.revealAnswer;
-          return `<span class="slot${isHint ? ' hint' : ''}">${shown}</span>`;
-        }).join('');
-      }
-
-      function renderKeyboard() {
-        refs.keyboard.querySelectorAll('.key').forEach(button => {
-          const letter = button.dataset.letter;
-          button.classList.remove('correct', 'wrong', 'hint');
-          if (state.hintLetters.has(letter)) button.classList.add('hint');
-          else if (state.correctLetters.has(letter)) button.classList.add('correct');
-          if (state.wrongLetters.has(letter)) button.classList.add('wrong');
-          button.disabled = state.guessedLetters.has(letter) || !state.acceptingInput;
-        });
-      }
-
-      function setMessage(text) {
-        refs.messageBox.textContent = text;
-      }
-
-      function showResult(kind) {
-        state.screen = 'result';
-        state.acceptingInput = false;
-        renderKeyboard();
-        updateHintButton();
-
-        const isClear = kind === 'clear';
-        refs.resultTitle.textContent = isClear ? 'CLEAR!' : 'GAME OVER';
-        refs.resultTitle.className = `resultTitle ${isClear ? 'clear' : 'gameover'}`;
-        refs.resultNote.textContent = isClear ? '풍선을 지켰어요!' : '풍선이 모두 터졌어요...';
-        refs.resultBalloons.textContent = `남은 풍선: ${Math.max(0, state.remainingBalloons)}개`;
-        refs.answerWord.textContent = state.currentEntry.word;
-        refs.answerMeaning.textContent = state.currentEntry.meaning;
-        refs.resultOverlay.classList.remove('hidden');
-      }
-
-      function setMood(element, mood) {
-        element.classList.remove('mood-idle', 'mood-correct', 'mood-wrong', 'mood-clear', 'mood-falling', 'mood-gameover');
-        void element.offsetWidth;
-        element.classList.add(`mood-${mood}`);
-      }
-
-      function randomPick(items) {
-        return items[Math.floor(Math.random() * items.length)];
-      }
-
-      function getCharacterSvg() {
-        return `
-          <svg class="doodleSvg" viewBox="0 0 220 245" role="img" aria-label="풍선 행맨 졸라맨 캐릭터">
-            <g class="bodyGroup">
-              <path class="line leftArm" d="M107 151 C91 139 82 128 76 115" />
-              <circle class="handFill gripHand" cx="74" cy="112" r="8" />
-              <path class="gripLine" d="M69 111 C72 116 77 116 81 112" />
-              <path class="line rightArm" d="M115 151 C136 159 151 173 164 190" />
-              <circle class="handFill" cx="165" cy="190" r="6.5" />
-              <path class="line" d="M111 143 C112 164 112 183 110 202" />
-              <path class="line leftLeg" d="M110 200 C98 216 88 226 78 236" />
-              <path class="line rightLeg" d="M110 200 C124 216 135 226 147 236" />
-            </g>
-            <g class="headGroup">
-              <circle class="faceFill line" cx="111" cy="84" r="51" />
-              <g class="eyeGroup">
-                <circle class="eyeDot" cx="95" cy="84" r="5.8" />
-                <circle class="eyeDot" cx="127" cy="84" r="5.8" />
-              </g>
-              <ellipse class="cheek" cx="83" cy="103" rx="9" ry="5.5" />
-              <ellipse class="cheek" cx="139" cy="103" rx="9" ry="5.5" />
-              <path class="thinLine mouth-idle" d="M99 111 C105 116 117 116 123 111" />
-              <path class="thinLine mouth-smile" d="M96 109 C103 122 120 122 127 109" />
-              <ellipse class="mouth-o" cx="112" cy="115" rx="9" ry="12" fill="#2a201b" stroke="#29201a" stroke-width="5" />
-              <path class="thinLine mouth-sad" d="M98 121 C105 114 119 114 126 121" />
-            </g>
-          </svg>`;
-      }
-    })();
-  </script>
+  <script src="./words.js?v=0.2.0"></script>
+  <script src="./game.js?v=0.2.0"></script>
 </body>
 </html>
