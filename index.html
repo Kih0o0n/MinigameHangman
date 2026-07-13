@@ -1,211 +1,94 @@
 <!doctype html>
 <html lang="ko">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#9edffc">
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#9fe3ff" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   <title>풍선 행맨</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=Jua&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./styles.css?v=0.2.0">
+  <link rel="stylesheet" href="./styles.css?v=0.2.1" />
 </head>
 <body>
-  <main class="app" id="app">
-    <div class="ambient-cloud cloud-a" aria-hidden="true"></div>
-    <div class="ambient-cloud cloud-b" aria-hidden="true"></div>
-    <div class="ambient-cloud cloud-c" aria-hidden="true"></div>
+<svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute; left:-9999px; top:-9999px;">
+    <filter id="roughPencilEdge" x="-8%" y="-8%" width="116%" height="116%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="8" result="noise" />
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.15" xChannelSelector="R" yChannelSelector="G" />
+    </filter>
+    <filter id="roughPencilLine" x="-12%" y="-12%" width="124%" height="124%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.055" numOctaves="2" seed="11" result="noise" />
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.65" xChannelSelector="R" yChannelSelector="G" />
+    </filter>
+  </svg>
+  <div id="app" class="app">
+    <section id="startScreen" class="screen startScreen">
+      <div class="cloud cloudOne"></div>
+      <div class="cloud cloudTwo"></div>
+      <div class="cloud cloudThree"></div>
 
-    <button class="sound-toggle" id="soundToggle" type="button" aria-pressed="true" aria-label="효과음 끄기">
-      <span class="sound-icon" aria-hidden="true">🔊</span>
-      <span class="sound-label">ON</span>
-    </button>
+      <button id="soundToggle" class="soundToggle" type="button" aria-pressed="true">🔊 효과음 ON</button>
 
-    <section class="screen start-screen is-active" id="startScreen" aria-labelledby="startTitle">
-      <div class="title-card">
-        <p class="eyebrow">BALLOON WORD GAME</p>
-        <h1 id="startTitle">풍선 행맨</h1>
-        <p class="english-title">Balloon Hangman</p>
-
-        <div class="start-hero" aria-hidden="true">
-          <svg viewBox="0 0 360 310" role="img">
-            <g class="preview-cluster">
-              <g class="preview-balloon b1"><ellipse cx="79" cy="66" rx="31" ry="38"/><path d="M79 104l-7 10h14z"/></g>
-              <g class="preview-balloon b2"><ellipse cx="132" cy="43" rx="31" ry="38"/><path d="M132 81l-7 10h14z"/></g>
-              <g class="preview-balloon b3"><ellipse cx="185" cy="58" rx="31" ry="38"/><path d="M185 96l-7 10h14z"/></g>
-              <g class="preview-balloon b4"><ellipse cx="238" cy="42" rx="31" ry="38"/><path d="M238 80l-7 10h14z"/></g>
-              <g class="preview-balloon b5"><ellipse cx="286" cy="72" rx="31" ry="38"/><path d="M286 110l-7 10h14z"/></g>
-              <path class="preview-string" d="M79 113 Q119 132 198 164"/>
-              <path class="preview-string" d="M132 90 Q151 119 198 164"/>
-              <path class="preview-string" d="M185 105 Q190 132 198 164"/>
-              <path class="preview-string" d="M238 89 Q224 124 198 164"/>
-              <path class="preview-string" d="M286 119 Q247 140 198 164"/>
-              <g class="preview-person">
-                <circle cx="177" cy="190" r="29"/>
-                <circle class="face-dot" cx="167" cy="186" r="3.5"/>
-                <circle class="face-dot" cx="187" cy="186" r="3.5"/>
-                <path class="smile" d="M166 199 Q177 208 188 199"/>
-                <path d="M177 219 L177 264"/>
-                <path d="M177 230 L198 206 L198 164"/>
-                <path d="M177 232 L149 247"/>
-                <path d="M177 264 L156 295"/>
-                <path d="M177 264 L205 294"/>
-                <circle class="hand" cx="198" cy="164" r="6"/>
-              </g>
-            </g>
-          </svg>
-        </div>
-
-        <p class="start-copy">풍선이 모두 터지기 전에<br>영어 단어를 맞혀보세요!</p>
-
-        <div class="start-actions">
-          <button class="button button-primary" id="startButton" type="button">START</button>
-          <button class="button button-secondary" id="startHeavenButton" type="button">띵보 게임 천국으로 돌아가기</button>
+      <div class="startCard doodlePanel">
+        <h1 class="gameTitle">풍선 행맨</h1>
+        <p class="subTitle">Balloon Hangman</p>
+        <div id="startMascot" class="startMascot characterActor mood-idle" aria-hidden="true"></div>
+        <p class="startDescription">풍선이 모두 터지기 전에<br>숨겨진 영어 단어를 맞혀보세요!</p>
+        <div class="startActions">
+          <button id="startBtn" class="doodleButton primary" type="button">START</button>
+          <button id="startHeavenLink" class="doodleButton secondary" type="button">띵보 게임 천국으로 돌아가기</button>
         </div>
       </div>
-      <span class="version">v0.2.0</span>
+      <div id="versionText" class="versionText">v0.2.1</div>
     </section>
 
-    <section class="screen play-screen" id="playScreen" aria-labelledby="playTitle" aria-hidden="true">
-      <header class="top-bar">
-        <button class="icon-button" id="backButton" type="button" aria-label="시작 화면으로 돌아가기">←</button>
-        <div class="top-heading">
-          <strong id="playTitle">풍선 행맨</strong>
-          <span>Balloon Hangman</span>
-        </div>
-        <div class="balloon-counter" aria-live="polite">
-          <span aria-hidden="true">🎈</span>
-          <strong id="balloonCount">7</strong>
-        </div>
+    <section id="playScreen" class="screen playScreen hidden" aria-live="polite">
+      <header class="topBar">
+        <button id="backToStartBtn" class="backButton" type="button" aria-label="시작 화면으로 돌아가기">‹</button>
+        <div class="topTitle">풍선 행맨</div>
+        <div id="balloonCount" class="balloonCount">🎈 7</div>
       </header>
 
-      <div class="play-layout">
-        <section class="stage" id="stage" aria-label="풍선에 매달린 캐릭터">
-          <div class="stage-glow" aria-hidden="true"></div>
-          <svg class="game-scene" id="gameScene" viewBox="0 0 360 330" role="img" aria-label="풍선 일곱 개를 한 손으로 잡고 있는 귀여운 졸라맨">
-            <g class="scene-actor" id="sceneActor">
-              <g class="string-layer" id="stringLayer">
-                <path class="balloon-string string-0" d="M52 101 Q108 125 196 174"/>
-                <path class="balloon-string string-1" d="M101 83 Q132 120 196 174"/>
-                <path class="balloon-string string-2" d="M151 108 Q165 132 196 174"/>
-                <path class="balloon-string string-3" d="M202 78 Q202 125 196 174"/>
-                <path class="balloon-string string-4" d="M254 103 Q235 137 196 174"/>
-                <path class="balloon-string string-5" d="M305 87 Q258 130 196 174"/>
-                <path class="balloon-string string-6" d="M323 135 Q267 148 196 174"/>
-              </g>
+      <main class="playMain">
+        <div id="skyArea" class="skyArea">
+          <div class="cloud cloudOne"></div>
+          <div class="cloud cloudTwo"></div>
+          <div id="balloonCluster" class="balloonCluster"></div>
+          <svg id="stringBundle" class="stringBundle" viewBox="0 0 286 170" aria-hidden="true" focusable="false"></svg>
+          <div id="characterActor" class="characterActor mood-idle" aria-hidden="true"></div>
+        </div>
 
-              <g class="balloon-group balloon-0" data-balloon-index="0">
-                <ellipse class="balloon-shape pink" cx="52" cy="61" rx="31" ry="39"/>
-                <ellipse class="balloon-shine" cx="42" cy="48" rx="8" ry="12"/>
-                <path class="balloon-knot pink" d="M52 100 l-7 11 h14 z"/>
-                <g class="pop-burst"><path d="M52 61l0-24M52 61l22-15M52 61l24 8M52 61l13 23M52 61l-13 23M52 61l-24 7M52 61l-22-15"/><text x="52" y="66">POP!</text></g>
-              </g>
-              <g class="balloon-group balloon-1" data-balloon-index="1">
-                <ellipse class="balloon-shape yellow" cx="101" cy="43" rx="31" ry="39"/>
-                <ellipse class="balloon-shine" cx="91" cy="30" rx="8" ry="12"/>
-                <path class="balloon-knot yellow" d="M101 82 l-7 11 h14 z"/>
-                <g class="pop-burst"><path d="M101 43l0-24M101 43l22-15M101 43l24 8M101 43l13 23M101 43l-13 23M101 43l-24 7M101 43l-22-15"/><text x="101" y="48">POP!</text></g>
-              </g>
-              <g class="balloon-group balloon-2" data-balloon-index="2">
-                <ellipse class="balloon-shape blue" cx="151" cy="68" rx="31" ry="39"/>
-                <ellipse class="balloon-shine" cx="141" cy="55" rx="8" ry="12"/>
-                <path class="balloon-knot blue" d="M151 107 l-7 11 h14 z"/>
-                <g class="pop-burst"><path d="M151 68l0-24M151 68l22-15M151 68l24 8M151 68l13 23M151 68l-13 23M151 68l-24 7M151 68l-22-15"/><text x="151" y="73">POP!</text></g>
-              </g>
-              <g class="balloon-group balloon-3" data-balloon-index="3">
-                <ellipse class="balloon-shape green" cx="202" cy="38" rx="31" ry="39"/>
-                <ellipse class="balloon-shine" cx="192" cy="25" rx="8" ry="12"/>
-                <path class="balloon-knot green" d="M202 77 l-7 11 h14 z"/>
-                <g class="pop-burst"><path d="M202 38l0-24M202 38l22-15M202 38l24 8M202 38l13 23M202 38l-13 23M202 38l-24 7M202 38l-22-15"/><text x="202" y="43">POP!</text></g>
-              </g>
-              <g class="balloon-group balloon-4" data-balloon-index="4">
-                <ellipse class="balloon-shape purple" cx="254" cy="63" rx="31" ry="39"/>
-                <ellipse class="balloon-shine" cx="244" cy="50" rx="8" ry="12"/>
-                <path class="balloon-knot purple" d="M254 102 l-7 11 h14 z"/>
-                <g class="pop-burst"><path d="M254 63l0-24M254 63l22-15M254 63l24 8M254 63l13 23M254 63l-13 23M254 63l-24 7M254 63l-22-15"/><text x="254" y="68">POP!</text></g>
-              </g>
-              <g class="balloon-group balloon-5" data-balloon-index="5">
-                <ellipse class="balloon-shape orange" cx="305" cy="47" rx="31" ry="39"/>
-                <ellipse class="balloon-shine" cx="295" cy="34" rx="8" ry="12"/>
-                <path class="balloon-knot orange" d="M305 86 l-7 11 h14 z"/>
-                <g class="pop-burst"><path d="M305 47l0-24M305 47l22-15M305 47l24 8M305 47l13 23M305 47l-13 23M305 47l-24 7M305 47l-22-15"/><text x="305" y="52">POP!</text></g>
-              </g>
-              <g class="balloon-group balloon-6" data-balloon-index="6">
-                <ellipse class="balloon-shape coral" cx="323" cy="95" rx="31" ry="39"/>
-                <ellipse class="balloon-shine" cx="313" cy="82" rx="8" ry="12"/>
-                <path class="balloon-knot coral" d="M323 134 l-7 11 h14 z"/>
-                <g class="pop-burst"><path d="M323 95l0-24M323 95l22-15M323 95l24 8M323 95l13 23M323 95l-13 23M323 95l-24 7M323 95l-22-15"/><text x="323" y="100">POP!</text></g>
-              </g>
-
-              <g class="character" id="character">
-                <g class="head-group">
-                  <circle class="head" cx="177" cy="205" r="31"/>
-                  <path class="brow brow-left" d="M160 193 Q166 189 172 193"/>
-                  <path class="brow brow-right" d="M182 193 Q188 189 194 193"/>
-                  <circle class="eye eye-left" cx="166" cy="201" r="3.8"/>
-                  <circle class="eye eye-right" cx="188" cy="201" r="3.8"/>
-                  <path class="mouth mouth-idle" d="M166 214 Q177 221 188 214"/>
-                  <path class="mouth mouth-open" d="M168 211 Q177 225 186 211 Q177 207 168 211Z"/>
-                  <circle class="cheek cheek-left" cx="158" cy="211" r="4"/>
-                  <circle class="cheek cheek-right" cx="196" cy="211" r="4"/>
-                </g>
-                <path class="body-line torso" d="M177 236 L177 279"/>
-                <g class="limb arm-holding">
-                  <path class="body-line" d="M177 246 Q188 229 196 212 L196 174"/>
-                  <circle class="hand-fill" cx="196" cy="174" r="7"/>
-                </g>
-                <g class="limb arm-free">
-                  <path class="body-line" d="M177 246 Q158 246 144 260"/>
-                  <circle class="hand-fill" cx="143" cy="261" r="5.5"/>
-                </g>
-                <g class="limb leg-left"><path class="body-line" d="M177 279 Q167 294 155 313"/><path class="foot" d="M154 313q-7 3-11 0"/></g>
-                <g class="limb leg-right"><path class="body-line" d="M177 279 Q191 294 206 311"/><path class="foot" d="M206 311q7 3 11-1"/></g>
-              </g>
-            </g>
-          </svg>
-          <div class="stage-message" id="stageMessage" aria-live="polite">알파벳을 골라보세요!</div>
-        </section>
-
-        <section class="word-area" aria-label="정답 단어">
-          <div class="word-slots" id="wordSlots" aria-live="polite"></div>
-          <div class="chance-row">
-            <button class="chance-button" id="hintButton" type="button">
-              <span aria-hidden="true">🎈</span>
-              <span>풍선 찬스</span>
-              <small>풍선 1개로 글자 보기</small>
-            </button>
-            <span class="chance-status" id="hintStatus" aria-live="polite"></span>
+        <section class="wordPanel" aria-label="단어 맞히기 영역">
+          <div id="wordSlots" class="wordSlots"></div>
+          <div class="hintArea">
+            <button id="hintBtn" class="hintButton" type="button">🎈 풍선 찬스</button>
+            <div id="hintStatus" class="hintStatus">풍선 1개로 글자 보기</div>
           </div>
+          <div id="messageBox" class="messageBox">알파벳을 골라보세요!</div>
         </section>
+      </main>
 
-        <section class="keyboard" id="keyboard" aria-label="알파벳 키보드"></section>
-      </div>
+      <nav id="keyboard" class="keyboard" aria-label="알파벳 키보드"></nav>
     </section>
 
-    <div class="result-overlay" id="resultOverlay" role="dialog" aria-modal="true" aria-labelledby="resultTitle" hidden>
-      <div class="result-card" id="resultCard">
-        <div class="result-badge" id="resultBadge" aria-hidden="true">✨</div>
-        <h2 id="resultTitle">CLEAR!</h2>
-        <p class="result-summary" id="resultSummary"></p>
-        <div class="answer-block">
-          <span>정답</span>
-          <strong id="answerWord"></strong>
-          <em id="answerMeaning"></em>
-        </div>
-        <p class="remaining-text" id="remainingText"></p>
-        <div class="result-actions">
-          <button class="button button-primary" id="againButton" type="button">한 번 더</button>
-          <button class="button button-ghost" id="homeButton" type="button">시작 화면</button>
-          <button class="button button-secondary" id="resultHeavenButton" type="button">띵보 게임 천국으로 돌아가기</button>
+    <div id="resultOverlay" class="resultOverlay hidden" role="dialog" aria-modal="true" aria-labelledby="resultTitle">
+      <div class="resultCard">
+        <h2 id="resultTitle" class="resultTitle">CLEAR!</h2>
+        <p id="resultNote" class="resultNote">풍선을 지켰어요!</p>
+        <p id="resultBalloons" class="resultBalloons">남은 풍선: 7개</p>
+        <p class="answerLabel">정답</p>
+        <p id="answerWord" class="answerWord">BALLOON</p>
+        <p class="answerLabel">뜻</p>
+        <p id="answerMeaning" class="answerMeaning">풍선</p>
+        <div class="resultActions">
+          <button id="againBtn" class="doodleButton primary" type="button">한 번 더</button>
+          <button id="resultStartBtn" class="doodleButton ghost" type="button">시작 화면</button>
+          <button id="resultHeavenLink" class="doodleButton secondary" type="button">띵보 게임 천국으로 돌아가기</button>
         </div>
       </div>
     </div>
-  </main>
-
-  <script src="./words.js?v=0.2.0"></script>
-  <script src="./game.js?v=0.2.0"></script>
+  </div>
+  <script src="./words.js?v=0.2.1"></script>
+  <script src="./game.js?v=0.2.1"></script>
 </body>
 </html>

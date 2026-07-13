@@ -1,544 +1,568 @@
 (() => {
-  "use strict";
+      'use strict';
 
-  const CONFIG = Object.freeze({
-    version: "0.2.0",
-    maxBalloons: 7,
-    successDelayMs: 420,
-    gameOverDelayMs: 800,
-    popAnimationMs: 350,
-    heavenUrl: "https://kih0o0n.github.io/DDingboGameHeaven/",
-    popOrder: [0, 6, 1, 5, 2, 4, 3],
-  });
-
-  const LETTER_ROWS = [
-    ["A", "B", "C", "D", "E", "F", "G"],
-    ["H", "I", "J", "K", "L", "M", "N"],
-    ["O", "P", "Q", "R", "S", "T", "U"],
-    ["V", "W", "X", "Y", "Z"],
-  ];
-
-  const dom = {
-    startScreen: document.getElementById("startScreen"),
-    playScreen: document.getElementById("playScreen"),
-    startButton: document.getElementById("startButton"),
-    startHeavenButton: document.getElementById("startHeavenButton"),
-    resultHeavenButton: document.getElementById("resultHeavenButton"),
-    backButton: document.getElementById("backButton"),
-    soundToggle: document.getElementById("soundToggle"),
-    soundIcon: document.querySelector(".sound-icon"),
-    soundLabel: document.querySelector(".sound-label"),
-    balloonCount: document.getElementById("balloonCount"),
-    stageMessage: document.getElementById("stageMessage"),
-    sceneActor: document.getElementById("sceneActor"),
-    stage: document.getElementById("stage"),
-    wordSlots: document.getElementById("wordSlots"),
-    keyboard: document.getElementById("keyboard"),
-    hintButton: document.getElementById("hintButton"),
-    hintStatus: document.getElementById("hintStatus"),
-    resultOverlay: document.getElementById("resultOverlay"),
-    resultCard: document.getElementById("resultCard"),
-    resultBadge: document.getElementById("resultBadge"),
-    resultTitle: document.getElementById("resultTitle"),
-    resultSummary: document.getElementById("resultSummary"),
-    answerWord: document.getElementById("answerWord"),
-    answerMeaning: document.getElementById("answerMeaning"),
-    remainingText: document.getElementById("remainingText"),
-    againButton: document.getElementById("againButton"),
-    homeButton: document.getElementById("homeButton"),
-  };
-
-  const state = {
-    screen: "start",
-    status: "idle",
-    current: null,
-    guessed: new Set(),
-    correct: new Set(),
-    wrong: new Set(),
-    hinted: new Set(),
-    remainingBalloons: CONFIG.maxBalloons,
-    hintUsed: false,
-    locked: false,
-    wordQueue: [],
-    soundEnabled: true,
-    audioContext: null,
-    noiseBuffer: null,
-    timers: new Set(),
-  };
-
-  function assertWordLibrary() {
-    if (!Array.isArray(window.WORD_LIBRARY) || window.WORD_LIBRARY.length === 0) {
-      throw new Error("WORD_LIBRARY를 불러오지 못했습니다.");
-    }
-
-    const invalid = window.WORD_LIBRARY.filter(({ word, meaning }) =>
-      typeof word !== "string" ||
-      !/^[A-Z]{5,9}$/.test(word) ||
-      typeof meaning !== "string" ||
-      meaning.trim().length === 0
-    );
-
-    if (invalid.length > 0) {
-      console.warn("규칙에 맞지 않는 단어가 있습니다.", invalid);
-    }
-  }
-
-  function shuffled(items) {
-    const copy = [...items];
-    for (let i = copy.length - 1; i > 0; i -= 1) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [copy[i], copy[j]] = [copy[j], copy[i]];
-    }
-    return copy;
-  }
-
-  function nextWord() {
-    if (state.wordQueue.length === 0) {
-      state.wordQueue = shuffled(window.WORD_LIBRARY);
-    }
-    return state.wordQueue.pop();
-  }
-
-  function setScreen(screenName) {
-    state.screen = screenName;
-    const showStart = screenName === "start";
-    dom.startScreen.classList.toggle("is-active", showStart);
-    dom.startScreen.setAttribute("aria-hidden", String(!showStart));
-    dom.playScreen.classList.toggle("is-active", !showStart);
-    dom.playScreen.setAttribute("aria-hidden", String(showStart));
-  }
-
-  function clearTimers() {
-    state.timers.forEach((timer) => clearTimeout(timer));
-    state.timers.clear();
-  }
-
-  function later(callback, delay) {
-    const timer = setTimeout(() => {
-      state.timers.delete(timer);
-      callback();
-    }, delay);
-    state.timers.add(timer);
-    return timer;
-  }
-
-  function resetScene() {
-    dom.sceneActor.className.baseVal = "scene-actor";
-    dom.stage.classList.remove("is-falling");
-    document.querySelectorAll(".balloon-group").forEach((group) => {
-      group.classList.remove("is-popping", "is-gone");
-    });
-    document.querySelectorAll(".balloon-string").forEach((line) => {
-      line.classList.remove("is-cut");
-    });
-  }
-
-  function startGame() {
-    clearTimers();
-    hideResult();
-    state.current = nextWord();
-    state.guessed = new Set();
-    state.correct = new Set();
-    state.wrong = new Set();
-    state.hinted = new Set();
-    state.remainingBalloons = CONFIG.maxBalloons;
-    state.hintUsed = false;
-    state.locked = false;
-    state.status = "playing";
-    resetScene();
-    renderWord();
-    renderKeyboard();
-    updateCounter();
-    updateHintButton();
-    showMessage("알파벳을 골라보세요!", "");
-    setScreen("play");
-    unlockAudio();
-    playSound("start");
-  }
-
-  function goHome() {
-    clearTimers();
-    hideResult();
-    state.status = "idle";
-    state.locked = false;
-    setScreen("start");
-    playSound("tap");
-  }
-
-  function revealMap() {
-    const result = [];
-    for (const letter of state.current.word) {
-      result.push(state.correct.has(letter) || state.hinted.has(letter));
-    }
-    return result;
-  }
-
-  function renderWord(options = {}) {
-    const revealAll = Boolean(options.revealAll);
-    const newlyRevealed = options.newlyRevealed || null;
-    const revealFlags = revealMap();
-    dom.wordSlots.replaceChildren();
-
-    [...state.current.word].forEach((letter, index) => {
-      const slot = document.createElement("span");
-      slot.className = "letter-slot";
-      const isVisible = revealAll || revealFlags[index];
-      slot.textContent = isVisible ? letter : "";
-      slot.setAttribute("aria-label", isVisible ? letter : "숨은 글자");
-
-      if (isVisible && newlyRevealed === letter) slot.classList.add("is-revealed");
-      if (state.hinted.has(letter)) slot.classList.add("is-hint");
-      if (revealAll && !revealFlags[index]) slot.classList.add("is-answer");
-      dom.wordSlots.append(slot);
-    });
-  }
-
-  function renderKeyboard() {
-    dom.keyboard.replaceChildren();
-    LETTER_ROWS.forEach((letters) => {
-      const row = document.createElement("div");
-      row.className = "keyboard-row";
-      row.dataset.count = String(letters.length);
-
-      letters.forEach((letter) => {
-        const key = document.createElement("button");
-        key.type = "button";
-        key.className = "key";
-        key.textContent = letter;
-        key.dataset.letter = letter;
-        key.setAttribute("aria-label", `${letter} 선택`);
-        key.addEventListener("click", () => chooseLetter(letter));
-        row.append(key);
+      const CONFIG = Object.freeze({
+        version: 'v0.2.1',
+        gameHeavenUrl: 'https://kih0o0n.github.io/DDingboGameHeaven/',
+        maxWrong: 7,
+        recentWordMemory: 5,
+        balloonPopOrder: [6, 5, 4, 0, 1, 2, 3],
+        clearDelayMs: 400,
+        gameOverDelayMs: 800,
+        keyboardRows: ['ABCDEFG', 'HIJKLMN', 'OPQRSTU', 'VWXYZ']
       });
 
-      dom.keyboard.append(row);
-    });
-  }
+      const refs = {};
+      const state = {
+        screen: 'start',
+        currentEntry: null,
+        guessedLetters: new Set(),
+        correctLetters: new Set(),
+        wrongLetters: new Set(),
+        hintLetters: new Set(),
+        remainingBalloons: CONFIG.maxWrong,
+        poppedBalloons: 0,
+        hintUsed: false,
+        revealAnswer: false,
+        recentWords: [],
+        acceptingInput: false,
+        lastWord: null,
+        resultTimer: null,
+        moodTimer: null
+      };
 
-  function getKey(letter) {
-    return dom.keyboard.querySelector(`[data-letter="${letter}"]`);
-  }
+      const wordLibrary = normalizeWordLibrary(window.WORD_LIBRARY);
 
-  function setKeyState(letter, kind) {
-    const key = getKey(letter);
-    if (!key) return;
-    key.disabled = true;
-    key.classList.add(`is-${kind}`, "pulse");
-    later(() => key.classList.remove("pulse"), 380);
-  }
+      const sound = {
+        enabled: localStorage.getItem('balloonHangmanSound') !== 'off',
+        ctx: null,
+        unlock() {
+          if (!this.enabled) return;
+          if (!this.ctx) {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContext) return;
+            this.ctx = new AudioContext();
+          }
+          if (this.ctx.state === 'suspended') this.ctx.resume();
+        },
+        tone(freq, duration = 0.08, type = 'sine', gainValue = 0.045, startDelay = 0) {
+          if (!this.enabled) return;
+          this.unlock();
+          if (!this.ctx) return;
+          const now = this.ctx.currentTime + startDelay;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, now);
+          gain.gain.setValueAtTime(0.0001, now);
+          gain.gain.exponentialRampToValueAtTime(gainValue, now + 0.01);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+          osc.connect(gain).connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + duration + 0.02);
+        },
+        tap() { this.tone(420, 0.045, 'triangle', 0.035); },
+        correct() {
+          this.tone(620, 0.08, 'sine', 0.075);
+          this.tone(820, 0.09, 'sine', 0.065, 0.055);
+        },
+        pop() {
+          if (!this.enabled) return;
+          this.unlock();
+          if (!this.ctx) return;
+          const now = this.ctx.currentTime;
+          const bufferSize = Math.floor(this.ctx.sampleRate * 0.12);
+          const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+          const data = buffer.getChannelData(0);
+          for (let i = 0; i < bufferSize; i++) {
+            const t = i / bufferSize;
+            data[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, 1.7);
+          }
+          const noise = this.ctx.createBufferSource();
+          const gain = this.ctx.createGain();
+          const filter = this.ctx.createBiquadFilter();
+          filter.type = 'bandpass';
+          filter.frequency.setValueAtTime(1250, now);
+          filter.Q.setValueAtTime(0.85, now);
+          gain.gain.setValueAtTime(0.42, now);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+          noise.buffer = buffer;
+          noise.connect(filter).connect(gain).connect(this.ctx.destination);
+          noise.start(now);
+          noise.stop(now + 0.13);
 
-  function chooseLetter(letter) {
-    if (state.status !== "playing" || state.locked || state.guessed.has(letter)) return;
+          const snap = this.ctx.createOscillator();
+          const snapGain = this.ctx.createGain();
+          snap.type = 'square';
+          snap.frequency.setValueAtTime(180, now);
+          snap.frequency.exponentialRampToValueAtTime(92, now + 0.08);
+          snapGain.gain.setValueAtTime(0.09, now);
+          snapGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.09);
+          snap.connect(snapGain).connect(this.ctx.destination);
+          snap.start(now);
+          snap.stop(now + 0.1);
+        },
+        success() {
+          [523, 659, 784, 1046].forEach((freq, idx) => this.tone(freq, 0.10, 'triangle', 0.075, idx * 0.06));
+        },
+        fail() {
+          if (!this.enabled) return;
+          this.unlock();
+          if (!this.ctx) return;
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(360, now);
+          osc.frequency.exponentialRampToValueAtTime(90, now + 0.45);
+          gain.gain.setValueAtTime(0.0001, now);
+          gain.gain.exponentialRampToValueAtTime(0.08, now + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.48);
+          osc.connect(gain).connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.5);
+        }
+      };
 
-    state.guessed.add(letter);
-    if (state.current.word.includes(letter)) {
-      state.correct.add(letter);
-      setKeyState(letter, "correct");
-      renderWord({ newlyRevealed: letter });
-      reactScene("correct");
-      showMessage(randomOf(["좋아요!", "정답!", "Nice!", "딱 맞았어요!"]), "good");
-      playSound("correct");
-      if (isWordComplete()) finishSuccess();
-      return;
-    }
+      document.addEventListener('DOMContentLoaded', init);
 
-    state.wrong.add(letter);
-    setKeyState(letter, "wrong");
-    showMessage(randomOf(["앗, 아니에요!", "풍선 하나가 팡!", "Oops!", "다른 글자를 골라보세요!"]), "bad");
-    loseBalloon("wrong");
-  }
+      function init() {
+        refs.app = document.getElementById('app');
+        refs.startScreen = document.getElementById('startScreen');
+        refs.playScreen = document.getElementById('playScreen');
+        refs.resultOverlay = document.getElementById('resultOverlay');
+        refs.startMascot = document.getElementById('startMascot');
+        refs.characterActor = document.getElementById('characterActor');
+        refs.skyArea = document.getElementById('skyArea');
+        refs.balloonCluster = document.getElementById('balloonCluster');
+        refs.stringBundle = document.getElementById('stringBundle');
+        refs.balloonCount = document.getElementById('balloonCount');
+        refs.wordSlots = document.getElementById('wordSlots');
+        refs.messageBox = document.getElementById('messageBox');
+        refs.keyboard = document.getElementById('keyboard');
+        refs.hintBtn = document.getElementById('hintBtn');
+        refs.hintStatus = document.getElementById('hintStatus');
+        refs.resultTitle = document.getElementById('resultTitle');
+        refs.resultNote = document.getElementById('resultNote');
+        refs.answerWord = document.getElementById('answerWord');
+        refs.answerMeaning = document.getElementById('answerMeaning');
+        refs.resultBalloons = document.getElementById('resultBalloons');
+        refs.soundToggle = document.getElementById('soundToggle');
+        refs.startHeavenLink = document.getElementById('startHeavenLink');
+        refs.resultHeavenLink = document.getElementById('resultHeavenLink');
+        refs.versionText = document.getElementById('versionText');
 
-  function isWordComplete() {
-    return [...state.current.word].every((letter) => state.correct.has(letter) || state.hinted.has(letter));
-  }
+        refs.versionText.textContent = CONFIG.version;
+        refs.startMascot.innerHTML = getCharacterSvg();
+        refs.characterActor.innerHTML = getCharacterSvg();
 
-  function loseBalloon(reason) {
-    if (state.remainingBalloons <= 0) return;
-    const popSequenceIndex = CONFIG.maxBalloons - state.remainingBalloons;
-    const balloonIndex = CONFIG.popOrder[popSequenceIndex];
-    state.remainingBalloons -= 1;
-    updateCounter();
-    popBalloon(balloonIndex);
-    playSound(reason === "hint" ? "hintPop" : "pop");
+        buildKeyboard();
+        updateSoundToggle();
 
-    if (state.remainingBalloons === 0) {
-      finishGameOver();
-    } else {
-      reactScene(reason === "hint" ? "wrong" : "wrong");
-      updateHintButton();
-    }
-  }
+        document.getElementById('startBtn').addEventListener('click', () => {
+          sound.unlock();
+          sound.tap();
+          if (wordLibrary.length === 0) {
+            setStartDescriptionError();
+            return;
+          }
+          startGame();
+        });
+        document.getElementById('backToStartBtn').addEventListener('click', () => {
+          sound.tap();
+          showStartScreen();
+        });
+        document.getElementById('againBtn').addEventListener('click', () => {
+          sound.tap();
+          startGame();
+        });
+        document.getElementById('resultStartBtn').addEventListener('click', () => {
+          sound.tap();
+          showStartScreen();
+        });
+        refs.soundToggle.addEventListener('click', () => {
+          sound.enabled = !sound.enabled;
+          localStorage.setItem('balloonHangmanSound', sound.enabled ? 'on' : 'off');
+          updateSoundToggle();
+          if (sound.enabled) {
+            sound.unlock();
+            sound.correct();
+          }
+        });
 
-  function popBalloon(index) {
-    const group = document.querySelector(`.balloon-${index}`);
-    const line = document.querySelector(`.string-${index}`);
-    if (!group) return;
-    group.classList.add("is-popping");
-    if (line) line.classList.add("is-cut");
-    later(() => {
-      group.classList.remove("is-popping");
-      group.classList.add("is-gone");
-    }, CONFIG.popAnimationMs);
-  }
+        refs.startHeavenLink.addEventListener('click', goToGameHeaven);
+        refs.resultHeavenLink.addEventListener('click', goToGameHeaven);
 
-  function reactScene(kind) {
-    if (state.status !== "playing") return;
-    const className = `state-${kind}`;
-    dom.sceneActor.classList.remove("state-correct", "state-wrong");
-    void dom.sceneActor.getBoundingClientRect();
-    dom.sceneActor.classList.add(className);
-    later(() => {
-      if (state.status === "playing") dom.sceneActor.classList.remove(className);
-    }, kind === "correct" ? 520 : 480);
-  }
+        refs.hintBtn.addEventListener('click', handleHintChance);
 
-  function updateCounter() {
-    dom.balloonCount.textContent = String(state.remainingBalloons);
-  }
+        document.addEventListener('keydown', event => {
+          if (!state.acceptingInput || state.screen !== 'playing') return;
+          const letter = event.key.toUpperCase();
+          if (/^[A-Z]$/.test(letter)) handleGuess(letter);
+        });
 
-  function showMessage(text, tone) {
-    dom.stageMessage.textContent = text;
-    dom.stageMessage.classList.remove("good", "bad", "hint", "bump");
-    if (tone) dom.stageMessage.classList.add(tone);
-    void dom.stageMessage.getBoundingClientRect();
-    dom.stageMessage.classList.add("bump");
-    later(() => dom.stageMessage.classList.remove("bump"), 360);
-  }
+        showStartScreen();
+      }
 
-  function useHint() {
-    if (state.status !== "playing" || state.locked || state.hintUsed || state.remainingBalloons < 2) return;
+      function normalizeWordLibrary(rawLibrary) {
+        if (!Array.isArray(rawLibrary)) return [];
+        const seen = new Set();
+        return rawLibrary
+          .map(entry => ({
+            word: String(entry.word || '').trim().toUpperCase(),
+            meaning: String(entry.meaning || '').trim()
+          }))
+          .filter(entry => {
+            if (!/^[A-Z]{5,9}$/.test(entry.word)) return false;
+            if (!entry.meaning) return false;
+            if (seen.has(entry.word)) return false;
+            seen.add(entry.word);
+            return true;
+          });
+      }
 
-    const hiddenLetters = [...new Set([...state.current.word].filter((letter) =>
-      !state.correct.has(letter) && !state.hinted.has(letter)
-    ))];
+      function setStartDescriptionError() {
+        const description = document.querySelector('.startDescription');
+        description.innerHTML = 'words.js 단어 라이브러리를<br>먼저 확인해 주세요!';
+      }
 
-    if (hiddenLetters.length === 0) return;
+      function updateSoundToggle() {
+        refs.soundToggle.textContent = sound.enabled ? '🔊 효과음 ON' : '🔇 효과음 OFF';
+        refs.soundToggle.setAttribute('aria-pressed', String(sound.enabled));
+      }
 
-    const counts = hiddenLetters.map((letter) => ({
-      letter,
-      count: [...state.current.word].filter((char) => char === letter).length,
-    }));
-    const minCount = Math.min(...counts.map(({ count }) => count));
-    const leastHelpful = counts.filter(({ count }) => count === minCount).map(({ letter }) => letter);
-    const revealedLetter = randomOf(leastHelpful);
+      function goToGameHeaven() {
+        sound.unlock();
+        sound.tap();
+        window.location.href = CONFIG.gameHeavenUrl;
+      }
 
-    state.hintUsed = true;
-    state.hinted.add(revealedLetter);
-    state.guessed.add(revealedLetter);
-    setKeyState(revealedLetter, "hint");
-    renderWord({ newlyRevealed: revealedLetter });
-    showMessage(`${revealedLetter} 공개! 풍선 하나를 사용했어요.`, "hint");
-    dom.hintStatus.textContent = "풍선 찬스를 사용했어요";
-    loseBalloon("hint");
-    playSound("hintReveal");
-    updateHintButton();
+      function showStartScreen() {
+        clearTimers();
+        state.screen = 'start';
+        state.acceptingInput = false;
+        refs.startScreen.classList.remove('hidden');
+        refs.playScreen.classList.add('hidden');
+        refs.resultOverlay.classList.add('hidden');
+        refs.skyArea.classList.remove('falling');
+        setMood(refs.startMascot, 'idle');
+        updateHintButton();
+      }
 
-    if (isWordComplete() && state.remainingBalloons > 0) finishSuccess();
-  }
+      function startGame() {
+        clearTimers();
+        state.screen = 'playing';
+        state.currentEntry = pickWord();
+        rememberRecentWord(state.currentEntry.word);
+        state.guessedLetters = new Set();
+        state.correctLetters = new Set();
+        state.wrongLetters = new Set();
+        state.hintLetters = new Set();
+        state.remainingBalloons = CONFIG.maxWrong;
+        state.poppedBalloons = 0;
+        state.hintUsed = false;
+        state.revealAnswer = false;
+        state.acceptingInput = true;
+        state.lastWord = state.currentEntry.word;
 
-  function updateHintButton() {
-    if (state.status !== "playing") return;
-    const insufficient = state.remainingBalloons < 2;
-    dom.hintButton.disabled = state.hintUsed || insufficient || state.locked;
-    if (state.hintUsed) {
-      dom.hintStatus.textContent = "풍선 찬스를 사용했어요";
-    } else if (insufficient) {
-      dom.hintStatus.textContent = "남은 풍선이 부족해요";
-    } else {
-      dom.hintStatus.textContent = "";
-    }
-  }
+        refs.startScreen.classList.add('hidden');
+        refs.playScreen.classList.remove('hidden');
+        refs.resultOverlay.classList.add('hidden');
+        refs.skyArea.classList.remove('falling');
+        refs.characterActor.innerHTML = getCharacterSvg();
+        setMood(refs.characterActor, 'idle');
 
-  function finishSuccess() {
-    if (state.status !== "playing") return;
-    state.status = "clear";
-    state.locked = true;
-    disableAllControls();
-    dom.sceneActor.classList.remove("state-correct", "state-wrong");
-    dom.sceneActor.classList.add("state-clear");
-    showMessage("단어 완성!", "good");
-    playSound("success");
-    later(() => showResult("clear"), CONFIG.successDelayMs);
-  }
+        renderBalloons();
+        renderStrings();
+        renderWordSlots();
+        renderKeyboard();
+        renderBalloonCount();
+        updateHintButton();
+        setMessage('알파벳을 골라보세요!');
+      }
 
-  function finishGameOver() {
-    if (state.status !== "playing") return;
-    state.status = "gameover";
-    state.locked = true;
-    disableAllControls();
-    renderWord({ revealAll: true });
-    dom.sceneActor.classList.remove("state-correct", "state-wrong");
-    dom.sceneActor.classList.add("state-falling");
-    dom.stage.classList.add("is-falling");
-    showMessage("으아아아—!", "bad");
-    playSound("fall");
-    later(() => showResult("gameover"), CONFIG.gameOverDelayMs);
-  }
+      function clearTimers() {
+        if (state.resultTimer) clearTimeout(state.resultTimer);
+        if (state.moodTimer) clearTimeout(state.moodTimer);
+        state.resultTimer = null;
+        state.moodTimer = null;
+      }
 
-  function disableAllControls() {
-    dom.keyboard.querySelectorAll("button").forEach((button) => { button.disabled = true; });
-    dom.hintButton.disabled = true;
-  }
+      function pickWord() {
+        const recentSet = new Set(state.recentWords);
+        let pool = wordLibrary.filter(entry => !recentSet.has(entry.word));
+        if (pool.length === 0) pool = wordLibrary;
+        return pool[Math.floor(Math.random() * pool.length)];
+      }
 
-  function showResult(type) {
-    const success = type === "clear";
-    dom.resultCard.classList.toggle("is-fail", !success);
-    dom.resultBadge.textContent = success ? "✨" : "💨";
-    dom.resultTitle.textContent = success ? "CLEAR!" : "GAME OVER";
-    dom.resultSummary.textContent = success ? randomOf(["멋지게 맞혔어요!", "풍선을 지켜냈어요!", "완벽한 추리였어요!"]) : "다음 단어에서 다시 도전해보세요!";
-    dom.answerWord.textContent = state.current.word;
-    dom.answerMeaning.textContent = state.current.meaning;
-    dom.remainingText.textContent = success ? `남은 풍선: ${state.remainingBalloons}개` : "남은 풍선: 0개";
-    dom.resultOverlay.hidden = false;
-    dom.againButton.focus({ preventScroll: true });
-  }
+      function rememberRecentWord(word) {
+        state.recentWords = state.recentWords.filter(item => item !== word);
+        state.recentWords.push(word);
+        while (state.recentWords.length > CONFIG.recentWordMemory) {
+          state.recentWords.shift();
+        }
+      }
 
-  function hideResult() {
-    dom.resultOverlay.hidden = true;
-  }
+      function buildKeyboard() {
+        refs.keyboard.innerHTML = '';
+        CONFIG.keyboardRows.forEach(rowText => {
+          const row = document.createElement('div');
+          row.className = `keyboardRow row${rowText.length}`;
+          rowText.split('').forEach(letter => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'key';
+            button.textContent = letter;
+            button.dataset.letter = letter;
+            button.setAttribute('aria-label', `${letter} 선택`);
+            button.addEventListener('click', () => handleGuess(letter));
+            row.appendChild(button);
+          });
+          refs.keyboard.appendChild(row);
+        });
+      }
 
-  function randomOf(items) {
-    return items[Math.floor(Math.random() * items.length)];
-  }
+      function handleGuess(letter) {
+        if (!state.acceptingInput || state.guessedLetters.has(letter)) return;
+        sound.unlock();
+        state.guessedLetters.add(letter);
 
-  function goToGameHeaven() {
-    playSound("tap");
-    window.location.href = CONFIG.heavenUrl;
-  }
+        if (state.currentEntry.word.includes(letter)) {
+          state.correctLetters.add(letter);
+          sound.correct();
+          setMessage(randomPick(['좋아요!', '맞았어요!', 'NICE!', 'GOOD!']));
+          setMood(refs.characterActor, 'correct');
+          renderWordSlots();
+          renderKeyboard();
+          updateHintButton();
 
-  function unlockAudio() {
-    if (!state.audioContext) {
-      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-      if (!AudioContextClass) return;
-      state.audioContext = new AudioContextClass();
-      state.noiseBuffer = createNoiseBuffer(state.audioContext);
-    }
-    if (state.audioContext.state === "suspended") {
-      state.audioContext.resume().catch(() => {});
-    }
-  }
+          if (isWordComplete()) {
+            state.acceptingInput = false;
+            setMood(refs.characterActor, 'clear');
+            sound.success();
+            state.resultTimer = setTimeout(() => showResult('clear'), CONFIG.clearDelayMs);
+          } else {
+            queueMoodIdle(560);
+          }
+          return;
+        }
 
-  function createNoiseBuffer(context) {
-    const length = Math.floor(context.sampleRate * .25);
-    const buffer = context.createBuffer(1, length, context.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < length; i += 1) data[i] = Math.random() * 2 - 1;
-    return buffer;
-  }
+        state.wrongLetters.add(letter);
+        state.remainingBalloons = Math.max(0, state.remainingBalloons - 1);
+        sound.pop();
+        popNextBalloon();
+        renderKeyboard();
+        renderBalloonCount();
+        updateHintButton();
 
-  function tone(frequency, duration, options = {}) {
-    if (!state.soundEnabled || !state.audioContext) return;
-    const context = state.audioContext;
-    const now = context.currentTime + (options.delay || 0);
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
-    oscillator.type = options.type || "sine";
-    oscillator.frequency.setValueAtTime(frequency, now);
-    if (options.endFrequency) oscillator.frequency.exponentialRampToValueAtTime(Math.max(20, options.endFrequency), now + duration);
-    gain.gain.setValueAtTime(.0001, now);
-    gain.gain.exponentialRampToValueAtTime(options.volume || .12, now + .015);
-    gain.gain.exponentialRampToValueAtTime(.0001, now + duration);
-    oscillator.connect(gain).connect(context.destination);
-    oscillator.start(now);
-    oscillator.stop(now + duration + .02);
-  }
+        if (state.remainingBalloons <= 0) {
+          state.acceptingInput = false;
+          setMessage('앗! 마지막 풍선이 터졌어요!');
+          refs.skyArea.classList.add('falling');
+          setMood(refs.characterActor, 'falling');
+          state.revealAnswer = true;
+          renderWordSlots();
+          sound.fail();
+          state.resultTimer = setTimeout(() => showResult('gameover'), CONFIG.gameOverDelayMs);
+        } else {
+          setMessage(randomPick(['Oops!', '풍선 하나가 터졌어요!', '다시 골라보세요!']));
+          setMood(refs.characterActor, 'wrong');
+          queueMoodIdle(520);
+        }
+      }
 
-  function noise(duration, volume, options = {}) {
-    if (!state.soundEnabled || !state.audioContext || !state.noiseBuffer) return;
-    const context = state.audioContext;
-    const now = context.currentTime + (options.delay || 0);
-    const source = context.createBufferSource();
-    const filter = context.createBiquadFilter();
-    const gain = context.createGain();
-    source.buffer = state.noiseBuffer;
-    filter.type = options.filterType || "bandpass";
-    filter.frequency.value = options.frequency || 1200;
-    filter.Q.value = options.q || .8;
-    gain.gain.setValueAtTime(volume, now);
-    gain.gain.exponentialRampToValueAtTime(.0001, now + duration);
-    source.connect(filter).connect(gain).connect(context.destination);
-    source.start(now);
-    source.stop(now + duration);
-  }
+      function handleHintChance() {
+        if (!state.acceptingInput || state.hintUsed) return;
+        if (state.remainingBalloons <= 1) {
+          setMessage('풍선이 부족해요!');
+          updateHintButton();
+          return;
+        }
 
-  function playSound(name) {
-    if (!state.soundEnabled) return;
-    unlockAudio();
-    if (!state.audioContext) return;
+        const letter = pickLeastHelpfulHiddenLetter();
+        if (!letter) return;
 
-    switch (name) {
-      case "tap":
-        tone(420, .07, { type: "sine", volume: .07, endFrequency: 520 });
-        break;
-      case "start":
-        tone(392, .12, { volume: .09 });
-        tone(523, .15, { delay: .08, volume: .1 });
-        break;
-      case "correct":
-        tone(620, .13, { type: "triangle", volume: .105 });
-        tone(820, .18, { type: "triangle", delay: .075, volume: .11 });
-        break;
-      case "pop":
-        noise(.12, .42, { filterType: "highpass", frequency: 650 });
-        tone(145, .14, { type: "square", volume: .18, endFrequency: 72 });
-        tone(980, .045, { type: "square", volume: .13 });
-        break;
-      case "hintPop":
-        noise(.12, .40, { filterType: "highpass", frequency: 620 });
-        tone(160, .13, { type: "square", volume: .16, endFrequency: 78 });
-        break;
-      case "hintReveal":
-        tone(560, .12, { type: "triangle", delay: .11, volume: .095 });
-        tone(760, .18, { type: "triangle", delay: .18, volume: .105 });
-        break;
-      case "success":
-        [523, 659, 784, 1047].forEach((frequency, index) => tone(frequency, .23, { type: "triangle", delay: index * .085, volume: .105 }));
-        break;
-      case "fall":
-        tone(360, .62, { type: "sawtooth", volume: .09, endFrequency: 82 });
-        break;
-      default:
-        break;
-    }
-  }
+        sound.unlock();
+        state.hintUsed = true;
+        state.guessedLetters.add(letter);
+        state.correctLetters.add(letter);
+        state.hintLetters.add(letter);
+        state.remainingBalloons = Math.max(0, state.remainingBalloons - 1);
 
-  function toggleSound() {
-    state.soundEnabled = !state.soundEnabled;
-    dom.soundToggle.setAttribute("aria-pressed", String(state.soundEnabled));
-    dom.soundToggle.setAttribute("aria-label", state.soundEnabled ? "효과음 끄기" : "효과음 켜기");
-    dom.soundIcon.textContent = state.soundEnabled ? "🔊" : "🔇";
-    dom.soundLabel.textContent = state.soundEnabled ? "ON" : "OFF";
-    if (state.soundEnabled) {
-      unlockAudio();
-      playSound("tap");
-    }
-  }
+        sound.pop();
+        popNextBalloon();
+        renderWordSlots();
+        renderKeyboard();
+        renderBalloonCount();
+        updateHintButton();
+        setMessage(`풍선 찬스로 ${letter} 공개!`);
+        setMood(refs.characterActor, 'wrong');
 
-  function handlePhysicalKeyboard(event) {
-    if (state.screen !== "play" || state.status !== "playing") return;
-    const letter = event.key.toUpperCase();
-    if (/^[A-Z]$/.test(letter)) chooseLetter(letter);
-  }
+        if (isWordComplete()) {
+          state.acceptingInput = false;
+          setMood(refs.characterActor, 'clear');
+          sound.success();
+          state.resultTimer = setTimeout(() => showResult('clear'), CONFIG.clearDelayMs);
+        } else {
+          queueMoodIdle(620);
+        }
+      }
 
-  function bindEvents() {
-    dom.startButton.addEventListener("click", startGame);
-    dom.startHeavenButton.addEventListener("click", goToGameHeaven);
-    dom.resultHeavenButton.addEventListener("click", goToGameHeaven);
-    dom.backButton.addEventListener("click", goHome);
-    dom.soundToggle.addEventListener("click", toggleSound);
-    dom.hintButton.addEventListener("click", useHint);
-    dom.againButton.addEventListener("click", startGame);
-    dom.homeButton.addEventListener("click", goHome);
-    document.addEventListener("keydown", handlePhysicalKeyboard);
-    document.addEventListener("pointerdown", unlockAudio, { once: true });
-  }
+      function pickLeastHelpfulHiddenLetter() {
+        const word = state.currentEntry.word;
+        const counts = new Map();
+        for (const letter of word) {
+          if (!state.correctLetters.has(letter)) {
+            counts.set(letter, (counts.get(letter) || 0) + 1);
+          }
+        }
+        const entries = [...counts.entries()];
+        if (entries.length === 0) return '';
+        const minCount = Math.min(...entries.map(([, count]) => count));
+        const candidates = entries.filter(([, count]) => count === minCount).map(([letter]) => letter);
+        return randomPick(candidates);
+      }
 
-  function init() {
-    assertWordLibrary();
-    bindEvents();
-    renderKeyboard();
-    updateCounter();
-  }
+      function updateHintButton() {
+        if (!refs.hintBtn || !refs.hintStatus) return;
+        const hasHiddenLetters = state.currentEntry && [...new Set(state.currentEntry.word.split(''))].some(letter => !state.correctLetters.has(letter));
+        const canUse = state.screen === 'playing' && state.acceptingInput && !state.hintUsed && state.remainingBalloons > 1 && hasHiddenLetters;
+        refs.hintBtn.disabled = !canUse;
 
-  init();
-})();
+        if (state.hintUsed) {
+          refs.hintBtn.textContent = '사용 완료';
+          refs.hintStatus.textContent = '찬스 글자는 연보라색이에요';
+        } else if (state.remainingBalloons <= 1 && state.screen === 'playing') {
+          refs.hintBtn.textContent = '풍선 부족';
+          refs.hintStatus.textContent = '풍선이 2개 이상 필요해요';
+        } else {
+          refs.hintBtn.textContent = '🎈 풍선 찬스';
+          refs.hintStatus.textContent = '풍선 1개로 글자 보기';
+        }
+      }
+
+      function queueMoodIdle(delayMs) {
+        if (state.moodTimer) clearTimeout(state.moodTimer);
+        state.moodTimer = setTimeout(() => {
+          if (state.screen === 'playing' && state.acceptingInput) setMood(refs.characterActor, 'idle');
+        }, delayMs);
+      }
+
+      function isWordComplete() {
+        return [...new Set(state.currentEntry.word.split(''))].every(letter => state.correctLetters.has(letter));
+      }
+
+      function renderBalloons() {
+        refs.balloonCluster.innerHTML = Array.from({ length: CONFIG.maxWrong }, (_, index) => (
+          `<div class="balloon" data-index="${index}"></div>`
+        )).join('');
+      }
+
+      function renderStrings() {
+        const paths = [
+          'M28 82 C42 112 58 137 78 158',
+          'M62 35 C66 82 71 121 78 158',
+          'M104 25 C98 76 89 120 78 158',
+          'M143 56 C123 95 100 127 78 158',
+          'M181 25 C145 77 111 119 78 158',
+          'M220 52 C166 96 125 129 78 158',
+          'M260 88 C190 114 137 138 78 158'
+        ];
+        refs.stringBundle.innerHTML = paths.map((d, index) =>
+          `<path data-index="${index}" d="${d}" />`
+        ).join('');
+      }
+
+      function popNextBalloon() {
+        const popPosition = state.poppedBalloons;
+        const index = CONFIG.balloonPopOrder[popPosition] ?? popPosition;
+        const balloon = refs.balloonCluster.querySelector(`[data-index="${index}"]`);
+        const string = refs.stringBundle.querySelector(`[data-index="${index}"]`);
+        if (balloon) balloon.classList.add('popped');
+        if (string) string.classList.add('popped');
+        state.poppedBalloons = Math.min(CONFIG.maxWrong, state.poppedBalloons + 1);
+      }
+
+      function renderBalloonCount() {
+        refs.balloonCount.textContent = `🎈 ${Math.max(0, state.remainingBalloons)}`;
+      }
+
+      function renderWordSlots() {
+        const word = state.currentEntry.word;
+        refs.wordSlots.innerHTML = word.split('').map(letter => {
+          const shown = state.revealAnswer || state.correctLetters.has(letter) ? letter : '';
+          const isHint = shown && state.hintLetters.has(letter) && !state.revealAnswer;
+          return `<span class="slot${isHint ? ' hint' : ''}">${shown}</span>`;
+        }).join('');
+      }
+
+      function renderKeyboard() {
+        refs.keyboard.querySelectorAll('.key').forEach(button => {
+          const letter = button.dataset.letter;
+          button.classList.remove('correct', 'wrong', 'hint');
+          if (state.hintLetters.has(letter)) button.classList.add('hint');
+          else if (state.correctLetters.has(letter)) button.classList.add('correct');
+          if (state.wrongLetters.has(letter)) button.classList.add('wrong');
+          button.disabled = state.guessedLetters.has(letter) || !state.acceptingInput;
+        });
+      }
+
+      function setMessage(text) {
+        refs.messageBox.textContent = text;
+      }
+
+      function showResult(kind) {
+        state.screen = 'result';
+        state.acceptingInput = false;
+        renderKeyboard();
+        updateHintButton();
+
+        const isClear = kind === 'clear';
+        refs.resultTitle.textContent = isClear ? 'CLEAR!' : 'GAME OVER';
+        refs.resultTitle.className = `resultTitle ${isClear ? 'clear' : 'gameover'}`;
+        refs.resultNote.textContent = isClear ? '풍선을 지켰어요!' : '풍선이 모두 터졌어요...';
+        refs.resultBalloons.textContent = `남은 풍선: ${Math.max(0, state.remainingBalloons)}개`;
+        refs.answerWord.textContent = state.currentEntry.word;
+        refs.answerMeaning.textContent = state.currentEntry.meaning;
+        refs.resultOverlay.classList.remove('hidden');
+      }
+
+      function setMood(element, mood) {
+        element.classList.remove('mood-idle', 'mood-correct', 'mood-wrong', 'mood-clear', 'mood-falling', 'mood-gameover');
+        void element.offsetWidth;
+        element.classList.add(`mood-${mood}`);
+      }
+
+      function randomPick(items) {
+        return items[Math.floor(Math.random() * items.length)];
+      }
+
+      function getCharacterSvg() {
+        return `
+          <svg class="doodleSvg" viewBox="0 0 220 245" role="img" aria-label="풍선 행맨 졸라맨 캐릭터">
+            <g class="bodyGroup">
+              <path class="line leftArm" d="M107 151 C91 139 82 128 76 115" />
+              <circle class="handFill gripHand" cx="74" cy="112" r="8" />
+              <path class="gripLine" d="M69 111 C72 116 77 116 81 112" />
+              <path class="line rightArm" d="M115 151 C136 159 151 173 164 190" />
+              <circle class="handFill" cx="165" cy="190" r="6.5" />
+              <path class="line" d="M111 143 C112 164 112 183 110 202" />
+              <path class="line leftLeg" d="M110 200 C98 216 88 226 78 236" />
+              <path class="line rightLeg" d="M110 200 C124 216 135 226 147 236" />
+            </g>
+            <g class="headGroup">
+              <circle class="faceFill line" cx="111" cy="84" r="51" />
+              <g class="eyeGroup">
+                <circle class="eyeDot" cx="95" cy="84" r="5.8" />
+                <circle class="eyeDot" cx="127" cy="84" r="5.8" />
+              </g>
+              <ellipse class="cheek" cx="83" cy="103" rx="9" ry="5.5" />
+              <ellipse class="cheek" cx="139" cy="103" rx="9" ry="5.5" />
+              <path class="thinLine mouth-idle" d="M99 111 C105 116 117 116 123 111" />
+              <path class="thinLine mouth-smile" d="M96 109 C103 122 120 122 127 109" />
+              <ellipse class="mouth-o" cx="112" cy="115" rx="9" ry="12" fill="#2a201b" stroke="#29201a" stroke-width="5" />
+              <path class="thinLine mouth-sad" d="M98 121 C105 114 119 114 126 121" />
+            </g>
+          </svg>`;
+      }
+    })();
